@@ -90,6 +90,12 @@ class VideoPool {
   /// Whether the pool has been disposed.
   bool _disposed = false;
 
+  /// Guards against concurrent reconciliation.
+  Future<void>? _activeReconciliation;
+
+  /// Monotonically increasing version to implement "latest wins" for rapid scroll.
+  int _reconciliationVersion = 0;
+
   // --- Statistics counters ---
   int _totalCreated = 0;
   int _swapCount = 0;
@@ -110,7 +116,19 @@ class VideoPool {
     required Map<int, double> visibilityRatios,
   }) {
     if (_disposed) return;
-    _reconcile(primaryIndex, visibilityRatios);
+
+    // "Latest wins" — bump version so stale reconciliations bail out early.
+    _reconciliationVersion++;
+    final version = _reconciliationVersion;
+
+    // Serialize reconciliation: wait for previous run to finish, then
+    // only run if no newer call has superseded us.
+    _activeReconciliation = (_activeReconciliation ?? Future<void>.value())
+        .then((_) {
+      if (version == _reconciliationVersion && !_disposed) {
+        return _reconcile(primaryIndex, visibilityRatios);
+      }
+    });
   }
 
   /// Internal reconciliation — the heart of the pool.
@@ -330,7 +348,7 @@ class VideoPool {
   }
 
   /// Emergency flush — dispose all except the primary player.
-  void _emergencyFlush() {
+  Future<void> _emergencyFlush() async {
     _logger.warning('Emergency flush triggered!');
 
     // Find the primary entry (the one currently playing).
@@ -343,15 +361,25 @@ class VideoPool {
     }
 
     final toEvict = _memoryManager.emergencyFlush(primary?.id);
+    // Collect entries to remove (avoid modifying list while iterating).
+    final toRemove = <PoolEntry>[];
     for (final entry in toEvict) {
       if (entry.lifecycleState != LifecycleState.playing) {
         _logger.debug('Emergency disposing entry ${entry.id}');
         entry.lifecycleNotifier.value = LifecycleState.disposed;
-        entry.adapter.dispose();
+        try {
+          await entry.adapter.dispose();
+        } catch (e, st) {
+          _logger.error('Emergency dispose failed for entry ${entry.id}', e, st);
+        }
+        entry.disposeNotifier();
         _memoryManager.untrack(entry.id);
-        _entries.remove(entry);
+        toRemove.add(entry);
         _disposeCount++;
       }
+    }
+    for (final entry in toRemove) {
+      _entries.remove(entry);
     }
 
     _logger.warning(
@@ -368,7 +396,11 @@ class VideoPool {
 
     _logger.info('Disposing pool with ${_entries.length} entries');
 
-    for (final entry in _entries) {
+    // Copy to avoid concurrent modification if emergency flush already removed some.
+    final remaining = List<PoolEntry>.of(_entries);
+    _entries.clear();
+
+    for (final entry in remaining) {
       try {
         await entry.adapter.dispose();
         entry.disposeNotifier();
@@ -378,7 +410,6 @@ class VideoPool {
         _logger.error('Dispose failed for entry ${entry.id}', e, st);
       }
     }
-    _entries.clear();
 
     _logger.info('Pool disposed');
   }

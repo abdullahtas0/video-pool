@@ -67,21 +67,28 @@ class PlayerState {
   final String? errorMessage;
 
   /// Creates a copy of this [PlayerState] with the given fields replaced.
+  ///
+  /// To explicitly clear [currentSource] or [errorMessage], pass
+  /// [clearCurrentSource] or [clearErrorMessage] as `true`.
   PlayerState copyWith({
     PlaybackPhase? phase,
     Duration? position,
     Duration? duration,
     double? bufferedFraction,
     VideoSource? currentSource,
+    bool clearCurrentSource = false,
     String? errorMessage,
+    bool clearErrorMessage = false,
   }) {
     return PlayerState(
       phase: phase ?? this.phase,
       position: position ?? this.position,
       duration: duration ?? this.duration,
       bufferedFraction: bufferedFraction ?? this.bufferedFraction,
-      currentSource: currentSource ?? this.currentSource,
-      errorMessage: errorMessage ?? this.errorMessage,
+      currentSource:
+          clearCurrentSource ? null : (currentSource ?? this.currentSource),
+      errorMessage:
+          clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
     );
   }
 

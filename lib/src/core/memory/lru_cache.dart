@@ -49,11 +49,15 @@ class LruCache<K, V> {
   /// Retrieves the value for [key], or `null` if not present.
   ///
   /// Accessing an entry promotes it to most-recently-used.
+  ///
+  /// **Note:** If `V` is a nullable type, this method cannot distinguish
+  /// between "key not found" and "value is null". Use [containsKey] first
+  /// if you need to differentiate. In practice, `video_pool` never stores
+  /// null values so this is not an issue.
   V? get(K key) {
-    final value = _map.remove(key);
-    if (value != null) {
-      _map[key] = value;
-    }
+    if (!_map.containsKey(key)) return null;
+    final value = _map.remove(key) as V;
+    _map[key] = value;
     return value;
   }
 

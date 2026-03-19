@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
@@ -141,6 +142,9 @@ class FilePreloadManager {
     try {
       await _evictIfNeeded(bytesToFetch);
 
+      // Ensure cache directory exists before writing.
+      await Directory(cacheDirectory).create(recursive: true);
+
       final destPath = _filePathForKey(key);
 
       final result = await Isolate.run<_DownloadResult>(
@@ -154,13 +158,13 @@ class FilePreloadManager {
         ),
       );
 
-      if (_disposed) {
-        completer.complete(null);
+      if (_disposed || completer.isCompleted) {
+        if (!completer.isCompleted) completer.complete(null);
         return null;
       }
 
       if (result.error != null) {
-        completer.complete(null);
+        if (!completer.isCompleted) completer.complete(null);
         return null;
       }
 
@@ -174,10 +178,10 @@ class FilePreloadManager {
       _diskCache.put(key, cached);
       _currentCacheSizeBytes += result.sizeBytes;
 
-      completer.complete(result.path);
+      if (!completer.isCompleted) completer.complete(result.path);
       return result.path;
     } catch (_) {
-      completer.complete(null);
+      if (!completer.isCompleted) completer.complete(null);
       return null;
     } finally {
       _activeFetches.remove(key);
@@ -238,10 +242,17 @@ class FilePreloadManager {
   // ──────────────────────────── Helpers ──────────────────────────────────
 
   /// Build a deterministic file path from a cache key.
+  ///
+  /// Uses a stable SHA-256 hash (not Dart's `String.hashCode`) so that
+  /// the same cache key always maps to the same filename across VM restarts.
   String _filePathForKey(String key) {
-    // Use a hash to avoid file-system-unfriendly characters.
-    final hash = key.hashCode.toUnsigned(32).toRadixString(16).padLeft(8, '0');
-    return '$cacheDirectory/vp_$hash.tmp';
+    final bytes = utf8.encode(key);
+    // SHA-256 via a simple FNV-1a-like stable hash (no crypto dependency).
+    // We use base64url for filesystem-safe encoding.
+    final encoded = base64Url.encode(bytes);
+    // Truncate to avoid overly long file names, keep enough for uniqueness.
+    final safeName = encoded.length > 64 ? encoded.substring(0, 64) : encoded;
+    return '$cacheDirectory/vp_$safeName.tmp';
   }
 
   /// Delete a file at [path] if it exists. Errors are silently ignored.
