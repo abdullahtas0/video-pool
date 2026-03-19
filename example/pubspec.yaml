@@ -1,0 +1,15 @@
+name: video_pool_example
+description: Example apps for video_pool package.
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  video_pool:
+    path: ../
+  media_kit: ^1.1.11
+  media_kit_video: ^1.2.5
+  media_kit_libs_video: ^1.0.5
