@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.2
+
+### Improvements
+- Fix example app Android v1 embedding build failure — recreated with v2 embedding
+- Add INTERNET permission and cleartext traffic support for Android
+- Add NSAppTransportSecurity for iOS HTTP video playback
+- Fix .gitignore rules that excluded example platform files
+- Remove tracked generated files (Pods, .gradle, .symlinks)
+- Add `repository`, `issue_tracker`, and `topics` metadata to pubspec
+- Shorten package description to meet pub.dev 180 char limit
+- Widen `media_kit_video` constraint to support latest version
+
 ## 0.1.1
 
 ### Bug Fixes
