@@ -103,11 +103,15 @@ class _VideoFeedViewState extends State<VideoFeedView> {
             itemCount: widget.sources.length,
           );
 
-          final pool = VideoPoolProvider.maybeOf(context);
-          pool?.onVisibilityChanged(
-            primaryIndex: update.primaryIndex,
-            visibilityRatios: update.visibilityRatios,
-          );
+          // Only notify the pool if the primary page changed to avoid
+          // excessive reconciliation calls during scroll animation.
+          if (update.primaryIndex != _currentPage) {
+            final pool = VideoPoolProvider.maybeOf(context);
+            pool?.onVisibilityChanged(
+              primaryIndex: update.primaryIndex,
+              visibilityRatios: update.visibilityRatios,
+            );
+          }
         }
         return false;
       },

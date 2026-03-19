@@ -107,6 +107,10 @@ class VideoPool {
   ThermalLevel _thermalLevel = ThermalLevel.nominal;
   MemoryPressureLevel _memoryPressure = MemoryPressureLevel.normal;
 
+  // --- Last known visibility state (for resume after background) ---
+  int _lastPrimaryIndex = -1;
+  Map<int, double> _lastVisibilityRatios = const {};
+
   /// Called by the visibility tracker when viewport changes.
   ///
   /// [primaryIndex] is the most visible slot index.
@@ -116,6 +120,10 @@ class VideoPool {
     required Map<int, double> visibilityRatios,
   }) {
     if (_disposed) return;
+
+    // Track last known state for resume after background.
+    _lastPrimaryIndex = primaryIndex;
+    _lastVisibilityRatios = Map.of(visibilityRatios);
 
     // "Latest wins" — bump version so stale reconciliations bail out early.
     _reconciliationVersion++;
@@ -286,6 +294,47 @@ class VideoPool {
 
   /// Get the [PoolEntry] assigned to a specific [index], if any.
   PoolEntry? getEntryForIndex(int index) => _getEntryForIndex(index);
+
+  /// Re-emit the last known visibility state.
+  ///
+  /// Useful when the app returns from background — the last playing video
+  /// will be resumed without requiring a scroll event.
+  void resumeLastState() {
+    if (_disposed || _lastPrimaryIndex < 0) return;
+    onVisibilityChanged(
+      primaryIndex: _lastPrimaryIndex,
+      visibilityRatios: _lastVisibilityRatios,
+    );
+  }
+
+  /// Toggle play/pause for the video at [index].
+  ///
+  /// This goes through the pool (not directly mutating the entry) so that
+  /// internal state tracking remains consistent.
+  Future<void> togglePlayPause(int index) async {
+    if (_disposed) return;
+    final entry = _getEntryForIndex(index);
+    if (entry == null) return;
+
+    final state = entry.lifecycleState;
+    if (state == LifecycleState.playing) {
+      try {
+        await entry.adapter.pause();
+        entry.lifecycleNotifier.value = LifecycleState.paused;
+      } catch (e, st) {
+        _logger.error('Pause failed for index $index', e, st);
+      }
+    } else if (state == LifecycleState.paused ||
+        state == LifecycleState.ready) {
+      try {
+        await entry.adapter.play();
+        entry.lifecycleNotifier.value = LifecycleState.playing;
+      } catch (e, st) {
+        _logger.error('Play failed for index $index', e, st);
+        entry.lifecycleNotifier.value = LifecycleState.error;
+      }
+    }
+  }
 
   PoolEntry? _getEntryForIndex(int index) {
     for (final entry in _entries) {

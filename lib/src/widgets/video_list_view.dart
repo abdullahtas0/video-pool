@@ -52,6 +52,21 @@ class _VideoListViewState extends State<VideoListView> {
   final VisibilityTracker _visibilityTracker = const VisibilityTracker();
 
   @override
+  void initState() {
+    super.initState();
+    // Trigger initial visibility after the first frame so the first
+    // video starts playing, consistent with VideoFeedView behavior.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final pool = VideoPoolProvider.maybeOf(context);
+      pool?.onVisibilityChanged(
+        primaryIndex: 0,
+        visibilityRatios: const {0: 1.0},
+      );
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return NotificationListener<ScrollNotification>(
       onNotification: _onScroll,

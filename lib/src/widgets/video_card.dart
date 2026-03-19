@@ -159,14 +159,9 @@ class _VideoCardState extends State<VideoCard> {
   }
 
   void _togglePlayPause(PoolEntry entry) {
-    final state = entry.lifecycleState;
-    if (state == LifecycleState.playing) {
-      entry.adapter.pause();
-      entry.lifecycleNotifier.value = LifecycleState.paused;
-    } else if (state == LifecycleState.paused) {
-      entry.adapter.play();
-      entry.lifecycleNotifier.value = LifecycleState.playing;
-    }
+    // Route through the pool so internal state tracking stays consistent.
+    final pool = VideoPoolProvider.of(context);
+    pool.togglePlayPause(widget.index);
   }
 
   void _retry(PoolEntry entry) {

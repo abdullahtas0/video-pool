@@ -82,8 +82,9 @@ class AudioFocusManager with WidgetsBindingObserver {
 
     switch (state) {
       case AppLifecycleState.paused:
-      case AppLifecycleState.inactive:
-        if (_hasFocus) {
+        // Only pause on full background (not inactive, which fires for
+        // system dialogs, app switcher, etc. on iOS).
+        if (_hasFocus && !_wasPlayingBeforeBackground) {
           _wasPlayingBeforeBackground = true;
           _onShouldPause?.call();
         }
@@ -92,6 +93,7 @@ class AudioFocusManager with WidgetsBindingObserver {
           _wasPlayingBeforeBackground = false;
           _onShouldResume?.call();
         }
+      case AppLifecycleState.inactive:
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
         break;

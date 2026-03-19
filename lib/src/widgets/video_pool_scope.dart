@@ -119,8 +119,9 @@ class _VideoPoolScopeState extends State<VideoPoolScope>
   }
 
   void _onShouldResume() {
-    // Resume is handled by the next scroll/visibility event, or the
-    // feed widget can re-trigger visibility on app resume.
+    // Re-emit the last known visibility state so the video that was
+    // playing before backgrounding resumes without requiring a scroll.
+    _pool.resumeLastState();
   }
 
   @override
