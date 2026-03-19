@@ -60,17 +60,24 @@ class _VideoCardState extends State<VideoCard> {
   @override
   Widget build(BuildContext context) {
     final pool = VideoPoolProvider.of(context);
-    final entry = pool.getEntryForIndex(widget.index);
 
-    if (entry == null) {
-      // No pool entry assigned to this index — show thumbnail.
-      return _buildThumbnail();
-    }
+    // Listen to reconciliation changes so we rebuild when an entry
+    // is first assigned to our index (entry goes from null → assigned).
+    return ValueListenableBuilder<int>(
+      valueListenable: pool.reconciliationNotifier,
+      builder: (context, _, __) {
+        final entry = pool.getEntryForIndex(widget.index);
 
-    return ValueListenableBuilder<LifecycleState>(
-      valueListenable: entry.lifecycleNotifier,
-      builder: (context, lifecycleState, _) {
-        return _buildForState(lifecycleState, entry);
+        if (entry == null) {
+          return _buildThumbnail();
+        }
+
+        return ValueListenableBuilder<LifecycleState>(
+          valueListenable: entry.lifecycleNotifier,
+          builder: (context, lifecycleState, _) {
+            return _buildForState(lifecycleState, entry);
+          },
+        );
       },
     );
   }

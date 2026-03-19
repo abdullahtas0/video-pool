@@ -4,6 +4,7 @@ import 'package:media_kit/media_kit.dart';
 import 'tiktok_example.dart';
 import 'instagram_example.dart';
 import 'custom_policy_example.dart';
+import 'direct_test.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,6 +62,19 @@ class _HomeScreen extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (_) => const InstagramExample(),
+              ),
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.play_circle),
+            title: const Text('Direct media_kit Test'),
+            subtitle: const Text('No pool — raw media_kit player'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const DirectTest(),
               ),
             ),
           ),

@@ -58,10 +58,21 @@ class _VideoListViewState extends State<VideoListView> {
     // video starts playing, consistent with VideoFeedView behavior.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Trigger initial visibility with the first few visible indices.
+      // This ensures the pool can find a video source even if the first
+      // item is non-video content (e.g. text post in a mixed feed).
       final pool = VideoPoolProvider.maybeOf(context);
-      pool?.onVisibilityChanged(
+      if (pool == null) return;
+      final visibleCount = widget.itemExtent != null
+          ? (MediaQuery.of(context).size.height / widget.itemExtent!).ceil()
+          : 3;
+      final ratios = <int, double>{};
+      for (var i = 0; i < visibleCount && i < widget.itemCount; i++) {
+        ratios[i] = i == 0 ? 1.0 : 0.5;
+      }
+      pool.onVisibilityChanged(
         primaryIndex: 0,
-        visibilityRatios: const {0: 1.0},
+        visibilityRatios: ratios,
       );
     });
   }

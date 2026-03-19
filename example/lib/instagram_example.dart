@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:video_pool/video_pool.dart';
 
-/// Sample video URLs for the Instagram-style feed.
+/// Short video clips for the Instagram-style feed.
 final _videos = [
   const VideoSource(
     url:
-        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-  ),
-  const VideoSource(
-    url:
-        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-  ),
-  const VideoSource(
-    url:
         'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    thumbnailUrl:
+        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerBlazes.jpg',
+  ),
+  const VideoSource(
+    url:
+        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+    thumbnailUrl:
+        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerEscapes.jpg',
+  ),
+  const VideoSource(
+    url:
+        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+    thumbnailUrl:
+        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerFun.jpg',
   ),
 ];
 
@@ -47,11 +53,17 @@ class InstagramExample extends StatelessWidget {
         config: const VideoPoolConfig(
           maxConcurrent: 2,
           preloadCount: 1,
-          logLevel: LogLevel.info,
+          logLevel: LogLevel.debug,
         ),
         adapterFactory: (_) => MediaKitAdapter(),
-        sourceResolver: (index) =>
-            index >= 0 && index < _videos.length ? _videos[index] : null,
+        sourceResolver: (index) {
+          // Map list-level indices to video sources.
+          // The pool sees list indices (0, 1, 2, 3, ...) from the
+          // VisibilityTracker, so the resolver must handle the
+          // list-to-video mapping (odd indices are videos).
+          final videoIdx = _videoIndexForItem(index);
+          return videoIdx >= 0 ? _videos[videoIdx] : null;
+        },
         child: VideoListView(
           itemCount: _totalItems,
           itemExtent: 400,
@@ -61,7 +73,9 @@ class InstagramExample extends StatelessWidget {
               return SizedBox(
                 height: 400,
                 child: VideoCard(
-                  index: videoIdx,
+                  // Use the list-level index (not videoIdx) so it matches
+                  // what the pool's VisibilityTracker reports.
+                  index: index,
                   source: _videos[videoIdx],
                 ),
               );

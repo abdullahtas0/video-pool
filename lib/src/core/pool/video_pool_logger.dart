@@ -1,5 +1,3 @@
-import 'dart:developer' as developer;
-
 import 'pool_config.dart';
 
 /// Logging utility for the video pool.
@@ -16,33 +14,32 @@ class VideoPoolLogger {
   /// Log a debug-level message.
   void debug(String message) {
     if (level.index >= LogLevel.debug.index) {
-      developer.log('[VideoPool] $message', level: 500);
+      // ignore: avoid_print
+      print('[VideoPool] $message');
     }
   }
 
   /// Log an informational message.
   void info(String message) {
     if (level.index >= LogLevel.info.index) {
-      developer.log('[VideoPool] $message', level: 800);
+      // ignore: avoid_print
+      print('[VideoPool] $message');
     }
   }
 
   /// Log a warning message.
   void warning(String message) {
     if (level.index >= LogLevel.warning.index) {
-      developer.log('[VideoPool] WARNING: $message', level: 900);
+      // ignore: avoid_print
+      print('[VideoPool] WARNING: $message');
     }
   }
 
   /// Log an error message with optional [error] and [stackTrace].
   void error(String message, [Object? error, StackTrace? stackTrace]) {
     if (level.index >= LogLevel.error.index) {
-      developer.log(
-        '[VideoPool] ERROR: $message',
-        level: 1000,
-        error: error,
-        stackTrace: stackTrace,
-      );
+      // ignore: avoid_print
+      print('[VideoPool] ERROR: $message${error != null ? ' $error' : ''}');
     }
   }
 }

@@ -51,6 +51,17 @@ class MediaKitAdapter implements PlayerAdapter {
 
   @override
   Future<void> swapSource(VideoSource source) async {
+    // CRITICAL: Stop current playback completely before loading new media
+    // to prevent audio from the previous video bleeding through.
+    // media_kit's Player.open() starts a new audio decoder, but the old
+    // audio track may not be destroyed if we only pause().
+    try {
+      await _player.setVolume(0); // Mute first to prevent any audio bleed
+      await _player.pause();      // Then pause playback
+    } catch (_) {
+      // Player may not have media loaded yet — ignore.
+    }
+
     // Ghost-frame prevention: immediately reset state before opening the
     // new source so that any UI bound to [stateNotifier] stops rendering
     // the previous video's frames.
@@ -61,6 +72,9 @@ class MediaKitAdapter implements PlayerAdapter {
 
     final mediaUri = _mediaUriForSource(source);
     await _player.open(Media(mediaUri), play: false);
+
+    // Restore volume after new media is loaded.
+    await _player.setVolume(100);
   }
 
   @override
@@ -116,8 +130,11 @@ class MediaKitAdapter implements PlayerAdapter {
     return _defaultMemoryEstimate;
   }
 
+  /// Cached video widget — must not be recreated on every build.
+  late final Widget _videoWidget = media_kit_video.Video(controller: _controller);
+
   @override
-  Widget get videoWidget => media_kit_video.Video(controller: _controller);
+  Widget get videoWidget => _videoWidget;
 
   @override
   Duration get position => _position;

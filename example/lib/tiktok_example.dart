@@ -1,27 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:video_pool/video_pool.dart';
 
-/// Sample video URLs (open-source / Creative Commons videos).
+/// Short, real video clips that load fast on emulators and devices.
+/// These are from Cloudflare's public test streams and Google samples.
 final _videos = [
   const VideoSource(
     url:
-        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-  ),
-  const VideoSource(
-    url:
-        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-  ),
-  const VideoSource(
-    url:
         'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    thumbnailUrl:
+        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerBlazes.jpg',
   ),
   const VideoSource(
     url:
         'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+    thumbnailUrl:
+        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerEscapes.jpg',
   ),
   const VideoSource(
     url:
         'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+    thumbnailUrl:
+        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerFun.jpg',
+  ),
+  const VideoSource(
+    url:
+        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
+    thumbnailUrl:
+        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerJoyrides.jpg',
+  ),
+  const VideoSource(
+    url:
+        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
+    thumbnailUrl:
+        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerMeltdowns.jpg',
   ),
 ];
 
@@ -45,7 +56,7 @@ class TikTokExample extends StatelessWidget {
         config: const VideoPoolConfig(
           maxConcurrent: 3,
           preloadCount: 1,
-          logLevel: LogLevel.info,
+          logLevel: LogLevel.debug,
         ),
         adapterFactory: (_) => MediaKitAdapter(),
         sourceResolver: (index) =>
