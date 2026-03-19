@@ -1,6 +1,6 @@
 name: video_pool
 description: Enterprise video orchestration for Flutter - intelligent controller pooling with instance reuse, visibility-based lifecycle, thermal throttling, disk caching, and ready-to-use widgets.
-version: 0.1.0
+version: 0.1.1
 homepage: https://github.com/example/video_pool
 
 environment:

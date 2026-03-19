@@ -1,21 +1,24 @@
 # video_pool
 
-Enterprise video orchestration for Flutter. Intelligent controller pooling with instance reuse, visibility-based lifecycle management, thermal throttling, disk caching, and ready-to-use widgets.
+Enterprise video orchestration for Flutter. Build TikTok, Reels, and Instagram-style video feeds with intelligent controller pooling, zero-jank scrolling, and automatic device protection.
 
-## Features
+## The Problem
 
-- **Controller pooling** -- A fixed pool of player instances that are reused via `swapSource()` instead of dispose/recreate. Zero allocation during normal scrolling.
-- **Visibility-based lifecycle** -- Intersection ratios drive play/pause/preload decisions. The most visible video plays; adjacent slots preload; distant slots release.
-- **Thermal & memory awareness** -- Native iOS/Android monitoring automatically throttles concurrency when the device overheats or runs low on memory.
-- **Disk pre-fetching** -- A 500 MB LRU cache downloads the first bytes of upcoming videos so playback starts instantly.
-- **Audio focus** -- System audio session management (AVAudioSession / AudioManager) with automatic background pause/resume.
-- **Ready-to-use widgets** -- `VideoFeedView` (TikTok/Reels), `VideoListView` (Instagram), and `VideoCard` handle all wiring for you.
+Flutter developers building video feed apps face severe performance issues:
 
-## Quick Start
+- **Freezing & jank** — creating/destroying `VideoPlayerController` on every scroll causes GC pressure and decoder teardown
+- **Overheating** — uncontrolled concurrent video decoders push GPU/CPU to thermal limits
+- **Memory leaks & OOM crashes** — each video texture consumes ~15-20MB GPU memory with no orchestration
+- **Audio bleeding** — videos continue playing in background or when navigating away
 
-Three lines of widget code to get a full-screen vertical video feed:
+The root cause: **no orchestration layer** manages the lifecycle of video controllers across a scrollable feed.
+
+## The Solution
+
+`video_pool` creates a fixed pool of player instances and **reuses them** as the user scrolls — swapping video sources without destroying the decoder pipeline. Combined with visibility tracking, thermal monitoring, and disk caching, it delivers smooth 60fps feeds on any device.
 
 ```dart
+// That's it. A full TikTok-style feed in 4 lines of widget code.
 VideoPoolScope(
   config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 1),
   adapterFactory: (_) => MediaKitAdapter(),
@@ -24,7 +27,33 @@ VideoPoolScope(
 )
 ```
 
-### Full example
+## Features
+
+| Feature | What it does |
+|---------|-------------|
+| **Controller Pooling** | Fixed pool of N players reused via `swapSource()`. Zero allocation during scroll. |
+| **Visibility Lifecycle** | Intersection ratio tracking drives play/pause/preload. Most visible plays, adjacent preloads, distant releases. |
+| **Thermal Throttling** | Native iOS/Android monitoring auto-reduces concurrency when device overheats. |
+| **Memory Pressure** | Responds to `onTrimMemory(RUNNING_CRITICAL)` with emergency flush to 1 player. |
+| **Disk Pre-fetching** | 500MB LRU cache downloads first 2MB of upcoming videos in isolate. Instant playback on scroll-back. |
+| **Audio Focus** | System audio session management. Auto-pause on background, phone call, other media app. |
+| **Ready-to-use Widgets** | `VideoFeedView` (TikTok), `VideoListView` (Instagram), `VideoCard` — all wiring handled. |
+| **Custom Policies** | Pluggable `LifecyclePolicy` for battery-saver, data-saver, or custom behaviors. |
+| **Debug Logging** | Configurable `LogLevel` shows pool state, swaps, thermal events in dev console. |
+
+## Quick Start
+
+### 1. Add dependency
+
+```yaml
+dependencies:
+  video_pool: ^0.1.1
+  media_kit: ^1.1.11
+  media_kit_video: ^1.2.5
+  media_kit_libs_video: ^1.0.5
+```
+
+### 2. Initialize
 
 ```dart
 import 'package:flutter/material.dart';
@@ -36,107 +65,151 @@ void main() {
   MediaKit.ensureInitialized();
   runApp(const MyApp());
 }
+```
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+### 3. Build your feed
 
-  static const videos = [
-    VideoSource(url: 'https://example.com/video1.mp4'),
-    VideoSource(url: 'https://example.com/video2.mp4'),
-    VideoSource(url: 'https://example.com/video3.mp4'),
-  ];
+**TikTok / Reels (full-screen vertical feed):**
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        body: VideoPoolScope(
-          config: const VideoPoolConfig(
-            maxConcurrent: 3,
-            preloadCount: 1,
-          ),
-          adapterFactory: (_) => MediaKitAdapter(),
-          sourceResolver: (index) =>
-              index >= 0 && index < videos.length ? videos[index] : null,
-          child: const VideoFeedView(sources: videos),
-        ),
-      ),
-    );
-  }
+```dart
+final videos = [
+  const VideoSource(url: 'https://example.com/video1.mp4'),
+  const VideoSource(url: 'https://example.com/video2.mp4'),
+  const VideoSource(url: 'https://example.com/video3.mp4'),
+];
+
+@override
+Widget build(BuildContext context) {
+  return VideoPoolScope(
+    config: const VideoPoolConfig(
+      maxConcurrent: 3,
+      preloadCount: 1,
+    ),
+    adapterFactory: (_) => MediaKitAdapter(),
+    sourceResolver: (index) =>
+        index >= 0 && index < videos.length ? videos[index] : null,
+    child: VideoFeedView(sources: videos),
+  );
 }
+```
+
+**Instagram (mixed content list):**
+
+```dart
+@override
+Widget build(BuildContext context) {
+  return VideoPoolScope(
+    config: const VideoPoolConfig(
+      maxConcurrent: 2,
+      preloadCount: 1,
+      visibilityPlayThreshold: 0.6,
+      visibilityPauseThreshold: 0.4,
+    ),
+    adapterFactory: (_) => MediaKitAdapter(),
+    sourceResolver: (index) => getVideoSource(index),
+    child: VideoListView(
+      itemCount: feedItems.length,
+      itemExtent: 400,
+      itemBuilder: (context, index) {
+        final item = feedItems[index];
+        if (item.isVideo) {
+          return VideoCard(index: item.videoIndex, source: item.videoSource);
+        }
+        return TextPostWidget(item);
+      },
+    ),
+  );
+}
+```
+
+## How It Works
+
+```
+User swipes to video 5
+         │
+    VisibilityTracker computes intersection ratios
+         │
+    VideoPool.onVisibilityChanged(primary: 5, ratios: {4: 0.1, 5: 0.95, 6: 0.05})
+         │
+    LifecycleOrchestrator.reconcile()
+    ├── Query DeviceMonitor → thermal=nominal, effectiveMax=3
+    ├── toRelease: {2}     → Player holding video 2 returns to idle
+    ├── toPreload: {6}     → Released player gets swapSource(video6)
+    ├── toPlay:   {5}      → Plays (instant if preloaded from previous swipe)
+    └── toPause:  {4}      → Pause but keep decoder allocated
+         │
+    Key: NO player.dispose() happened. Players REUSED via swapSource().
+```
+
+### Instance Reuse (Core Innovation)
+
+Traditional approach: `dispose()` + `new Player()` on every scroll → decoder teardown, GC pressure, jank.
+
+video_pool approach: Pool creates N players at init. They are **never disposed** during normal scroll:
+
+```
+Pool Init:   Create 3 Player instances
+Scroll 1→2:  Player-0 stays on video 1 (pause), Player-1 plays video 2
+Scroll 2→3:  Player-0 gets swapSource(video 4) for preload, Player-2 plays video 3
+Scroll 3→4:  Player-1 gets swapSource(video 5) for preload, Player-0 plays video 4
+...
+Result: 3 players handle infinite scroll. Zero GC pressure. Instant transitions.
 ```
 
 ## Architecture
 
 ```
-VideoPoolScope (widget)
-  |-- VideoPool (core engine)
-  |     |-- PoolEntry[] (fixed-size array of player slots)
-  |     |     `-- PlayerAdapter (media_kit wrapper)
-  |     |-- LifecycleOrchestrator
-  |     |     `-- LifecyclePolicy (pluggable strategy)
-  |     `-- MemoryManager (budget tracking, LRU eviction)
-  |-- AudioFocusManager (system audio session)
-  `-- DeviceMonitor (thermal + memory native streams)
+VideoPoolScope (widget — owns lifecycle)
+├── VideoPool (coordinator — the brain)
+│   ├── PoolEntry[0..N] (fixed slots, never disposed during scroll)
+│   │   └── PlayerAdapter → MediaKitAdapter (swapSource reuse)
+│   ├── LifecycleOrchestrator
+│   │   └── LifecyclePolicy (pluggable strategy)
+│   ├── MemoryManager (LRU budget tracking, emergency flush)
+│   └── FilePreloadManager (isolate-based disk cache)
+├── AudioFocusManager (system audio session, lifecycle observer)
+├── DeviceMonitor (native thermal + memory streams)
+└── VisibilityTracker (intersection ratio computation)
 ```
-
-**How scrolling works:**
-
-1. `VideoFeedView` / `VideoListView` compute intersection ratios via `VisibilityTracker`.
-2. Ratios are sent to `VideoPool.onVisibilityChanged()`.
-3. The `LifecycleOrchestrator` produces a `ReconciliationPlan` (play, pause, preload, release).
-4. The pool executes the plan by calling `swapSource()` on idle entries -- never disposing during normal scroll.
 
 ## API Reference
 
-### VideoPoolScope
-
-Widget that owns the lifecycle of a `VideoPool`. Place it above your feed widget.
-
-| Parameter | Type | Description |
-|---|---|---|
-| `config` | `VideoPoolConfig` | Pool sizing and behavior |
-| `adapterFactory` | `PlayerAdapter Function(int)` | Creates player instances |
-| `sourceResolver` | `VideoSource? Function(int)` | Maps index to video source |
-| `child` | `Widget` | The feed widget |
-
 ### VideoPoolConfig
 
-| Parameter | Default | Description |
-|---|---|---|
-| `maxConcurrent` | `3` | Max simultaneous player instances |
-| `preloadCount` | `1` | Adjacent slots to preload |
-| `memoryBudgetBytes` | `150 MB` | Soft memory budget for all players |
-| `visibilityPlayThreshold` | `0.6` | Min visibility to auto-play |
-| `visibilityPauseThreshold` | `0.4` | Visibility below which to auto-pause |
-| `preloadTimeout` | `10s` | Max time for a preload operation |
-| `lifecyclePolicy` | `DefaultLifecyclePolicy` | Custom reconciliation strategy |
-| `logLevel` | `LogLevel.none` | Diagnostic logging verbosity |
-
-### VideoFeedView
-
-TikTok/Reels style full-screen `PageView`. Snaps to each video.
-
-### VideoListView
-
-Instagram-style scrollable list. Use with `VideoCard` for video items and any widget for non-video items.
-
-### VideoCard
-
-Individual video widget that listens to pool lifecycle state and renders the appropriate UI (thumbnail, loading, playing, paused, error).
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `maxConcurrent` | `int` | `3` | Max simultaneous player instances in pool |
+| `preloadCount` | `int` | `1` | Number of adjacent slots to preload ahead |
+| `memoryBudgetBytes` | `int` | `150 MB` | Soft memory budget for all players combined |
+| `visibilityPlayThreshold` | `double` | `0.6` | Min intersection ratio to auto-play (60%) |
+| `visibilityPauseThreshold` | `double` | `0.4` | Ratio below which to auto-pause (40%) |
+| `preloadTimeout` | `Duration` | `10s` | Max time for a preload operation |
+| `lifecyclePolicy` | `LifecyclePolicy?` | `DefaultLifecyclePolicy` | Custom reconciliation strategy |
+| `logLevel` | `LogLevel` | `none` | Diagnostic logging: none/error/warning/info/debug |
 
 ### VideoSource
-
-Immutable value object describing a video resource:
 
 ```dart
 const VideoSource(
   url: 'https://example.com/video.mp4',
-  type: VideoSourceType.network,  // or .file, .asset
+  type: VideoSourceType.network,  // .network (default), .file, .asset
   headers: {'Authorization': 'Bearer token'},
   thumbnailUrl: 'https://example.com/thumb.jpg',
+  cacheKey: 'custom-key',  // defaults to url
 )
 ```
+
+### Widgets
+
+| Widget | Purpose |
+|--------|---------|
+| `VideoPoolScope` | Owns pool lifecycle. Place above your feed widget. |
+| `VideoFeedView` | TikTok/Reels full-screen `PageView` with snapping. |
+| `VideoListView` | Instagram-style scrollable `ListView` for mixed content. |
+| `VideoCard` | Individual video with lifecycle rendering (thumbnail → loading → playing → error). |
+| `VideoThumbnail` | Placeholder image before video loads. |
+| `VideoOverlay` | Play/pause/buffering overlay controls. |
+| `VideoErrorWidget` | Error UI with retry button. |
 
 ### Custom LifecyclePolicy
 
@@ -154,27 +227,72 @@ class BatterySaverPolicy implements LifecyclePolicy {
     required int effectivePreloadCount,
     required Set<int> currentlyActive,
   }) {
-    // Only play the primary, release everything else
+    // Only play the primary video, release everything else immediately
     return ReconciliationPlan(
       toPlay: {primaryIndex},
       toRelease: currentlyActive.difference({primaryIndex}),
     );
   }
 }
+
+// Usage:
+VideoPoolConfig(
+  lifecyclePolicy: const BatterySaverPolicy(),
+)
 ```
+
+## Thermal & Memory Behavior
+
+The pool dynamically adapts to device conditions:
+
+| Condition | Effect |
+|-----------|--------|
+| Thermal nominal/fair | Full `maxConcurrent`, full `preloadCount` |
+| Thermal serious | Pool shrinks to `ceil(maxConcurrent * 0.66)`, preloading disabled |
+| Thermal critical | Pool shrinks to 1 player only |
+| Memory warning | Budget reduced to 70% |
+| Memory critical | Budget reduced to 40% |
+| Memory terminal (`TRIM_MEMORY_RUNNING_CRITICAL`) | **Emergency flush** — all non-playing players instantly disposed |
+
+## Platform Setup
+
+This package uses [media_kit](https://pub.dev/packages/media_kit) for video playback. Follow the [media_kit platform setup guide](https://github.com/media-kit/media-kit#platform-specific-preparation) for:
+
+- **iOS**: Add to `Podfile` and run `pod install`
+- **Android**: No additional setup needed (uses bundled native libraries)
+
+### Minimum Requirements
+
+| Platform | Minimum Version |
+|----------|----------------|
+| iOS | 13.0 |
+| Android | API 21 (5.0) |
+| Flutter | 3.16.0 |
+| Dart | 3.2.0 |
 
 ## Dependencies
 
 | Package | Purpose |
-|---|---|
-| [media_kit](https://pub.dev/packages/media_kit) | Cross-platform video player |
+|---------|---------|
+| [media_kit](https://pub.dev/packages/media_kit) | Cross-platform GPU-accelerated video playback |
 | [media_kit_video](https://pub.dev/packages/media_kit_video) | Video rendering widget |
-| [media_kit_libs_video](https://pub.dev/packages/media_kit_libs_video) | Native video libraries |
+| [media_kit_libs_video](https://pub.dev/packages/media_kit_libs_video) | Native video codec libraries |
 
-## Platform Setup
+No other dependencies. Disk cache uses `dart:io` + `Isolate`. Audio focus uses platform channels. State management uses `InheritedWidget` + `ValueNotifier` — no Provider/Riverpod required.
 
-Follow the [media_kit setup guide](https://github.com/media-kit/media-kit#platform-specific-preparation) for iOS and Android native library configuration.
+## Example App
+
+See the [`example/`](example/) directory for three runnable demos:
+
+- **TikTok Feed** — Full-screen vertical video feed with preloading
+- **Instagram Feed** — Mixed content list with video cards and text posts
+- **Custom Policy** — Battery-saver lifecycle policy with debug logging
+
+```bash
+cd example
+flutter run
+```
 
 ## License
 
-MIT -- see [LICENSE](LICENSE) for details.
+MIT — see [LICENSE](LICENSE) for details.

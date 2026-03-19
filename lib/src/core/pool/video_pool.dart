@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../adapter/player_adapter.dart';
 import '../lifecycle/lifecycle_orchestrator.dart';
 import '../lifecycle/lifecycle_policy.dart';
@@ -72,6 +74,15 @@ class VideoPool {
   /// Pool configuration.
   final VideoPoolConfig config;
 
+  /// Elapsed time since pool creation.
+  ///
+  /// Used to prevent emergency flush during the initial warmup period.
+  /// Some devices (e.g. MIUI on Redmi) report terminal memory pressure
+  /// immediately on app start, which would destroy all entries permanently.
+  /// Uses [Stopwatch] instead of [DateTime] for monotonic timing that is
+  /// immune to system clock changes.
+  final Stopwatch _warmupWatch = Stopwatch()..start();
+
   /// Resolves a video index to its source.
   final VideoSourceResolver _sourceResolver;
 
@@ -89,6 +100,12 @@ class VideoPool {
 
   /// Whether the pool has been disposed.
   bool _disposed = false;
+
+  /// Notifies listeners when reconciliation completes and entries change.
+  ///
+  /// Widgets like [VideoCard] listen to this to rebuild when a pool entry
+  /// is assigned to their index.
+  final ValueNotifier<int> reconciliationNotifier = ValueNotifier<int>(0);
 
   /// Guards against concurrent reconciliation.
   Future<void>? _activeReconciliation;
@@ -186,9 +203,26 @@ class VideoPool {
 
     // 4b: Preload adjacent slots.
     for (final index in plan.toPreload) {
-      if (_getEntryForIndex(index) != null) {
+      final existingEntry = _getEntryForIndex(index);
+      if (existingEntry != null) {
         // Already assigned — cache hit.
         _cacheHits++;
+        // Safety: if this entry was previously playing but is now only
+        // preloaded (not primary), pause it to prevent audio overlap.
+        if (existingEntry.lifecycleState == LifecycleState.playing) {
+          _logger.debug(
+            'Pausing preloaded entry ${existingEntry.id} (was playing)',
+          );
+          try {
+            await existingEntry.adapter.setVolume(0);
+            await existingEntry.adapter.pause();
+          } catch (e, st) {
+            _logger.error(
+              'Pause preloaded entry failed for ${existingEntry.id}', e, st,
+            );
+          }
+          existingEntry.lifecycleNotifier.value = LifecycleState.paused;
+        }
         continue;
       }
       final source = _sourceResolver(index);
@@ -259,6 +293,10 @@ class VideoPool {
         _logger.error('Pause failed for index $index', e, st);
       }
     }
+
+    // Notify widgets that reconciliation is complete so they can rebuild
+    // and pick up newly assigned entries.
+    reconciliationNotifier.value++;
   }
 
   /// Release a player from its current assignment back to the idle pool.
@@ -267,6 +305,8 @@ class VideoPool {
   Future<void> _releaseEntry(PoolEntry entry) async {
     _logger.debug('Releasing entry ${entry.id} from index ${entry.assignedIndex}');
     try {
+      // Set volume to 0 first to prevent audio bleed during async pause.
+      await entry.adapter.setVolume(0);
       await entry.adapter.pause();
     } catch (e, st) {
       _logger.error('Pause during release failed for entry ${entry.id}', e, st);
@@ -388,6 +428,14 @@ class VideoPool {
     _memoryManager.scaleBudget(memoryPressure);
 
     if (memoryPressure == MemoryPressureLevel.terminal) {
+      // Don't flush within the first 5 seconds of pool creation.
+      // Some devices (e.g. MIUI on Redmi) aggressively report terminal
+      // memory pressure on launch, which would destroy all entries before
+      // any video starts playing.
+      if (_warmupWatch.elapsedMilliseconds < 5000) {
+        _logger.warning('Ignoring terminal pressure during pool warmup');
+        return;
+      }
       _emergencyFlush();
     }
 
@@ -397,6 +445,9 @@ class VideoPool {
   }
 
   /// Emergency flush — dispose all except the primary player.
+  ///
+  /// Always keeps at least one entry alive to prevent the pool from
+  /// becoming permanently empty (which would make the app appear dead).
   Future<void> _emergencyFlush() async {
     _logger.warning('Emergency flush triggered!');
 
@@ -409,23 +460,31 @@ class VideoPool {
       }
     }
 
+    // If nothing is playing, keep the first entry alive so the pool
+    // is never left completely empty.
+    if (primary == null && _entries.isNotEmpty) {
+      primary = _entries.first;
+    }
+
+    _logger.warning('Emergency flush! Keeping entry ${primary?.id}');
+
     final toEvict = _memoryManager.emergencyFlush(primary?.id);
     // Collect entries to remove (avoid modifying list while iterating).
     final toRemove = <PoolEntry>[];
     for (final entry in toEvict) {
-      if (entry.lifecycleState != LifecycleState.playing) {
-        _logger.debug('Emergency disposing entry ${entry.id}');
-        entry.lifecycleNotifier.value = LifecycleState.disposed;
-        try {
-          await entry.adapter.dispose();
-        } catch (e, st) {
-          _logger.error('Emergency dispose failed for entry ${entry.id}', e, st);
-        }
-        entry.disposeNotifier();
-        _memoryManager.untrack(entry.id);
-        toRemove.add(entry);
-        _disposeCount++;
+      // Never dispose the kept entry.
+      if (entry.id == primary?.id) continue;
+      _logger.debug('Emergency disposing entry ${entry.id}');
+      entry.lifecycleNotifier.value = LifecycleState.disposed;
+      try {
+        await entry.adapter.dispose();
+      } catch (e, st) {
+        _logger.error('Emergency dispose failed for entry ${entry.id}', e, st);
       }
+      entry.disposeNotifier();
+      _memoryManager.untrack(entry.id);
+      toRemove.add(entry);
+      _disposeCount++;
     }
     for (final entry in toRemove) {
       _entries.remove(entry);
@@ -444,6 +503,7 @@ class VideoPool {
     _disposed = true;
 
     _logger.info('Disposing pool with ${_entries.length} entries');
+    reconciliationNotifier.dispose();
 
     // Copy to avoid concurrent modification if emergency flush already removed some.
     final remaining = List<PoolEntry>.of(_entries);

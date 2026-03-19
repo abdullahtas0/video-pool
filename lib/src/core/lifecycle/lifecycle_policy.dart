@@ -120,6 +120,16 @@ class DefaultLifecyclePolicy implements LifecyclePolicy {
       }
     }
 
+    // Previously active entries that are now in the preload set (but not
+    // primary) must be paused to stop their audio playback. Without this,
+    // an entry that was playing keeps its audio running when it transitions
+    // from primary to preloaded on scroll.
+    for (final index in currentlyActive) {
+      if (toPreload.contains(index) && index != primaryIndex) {
+        toPause.add(index);
+      }
+    }
+
     // The desired active set is play + preload + pause.
     final desiredActive = {...toPlay, ...toPreload, ...toPause};
 
