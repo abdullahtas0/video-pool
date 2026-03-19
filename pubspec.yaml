@@ -1,7 +1,15 @@
 name: video_pool
-description: Enterprise video orchestration for Flutter - intelligent controller pooling with instance reuse, visibility-based lifecycle, thermal throttling, disk caching, and ready-to-use widgets.
+description: Video orchestration for Flutter - controller pooling, instance reuse, visibility lifecycle, thermal throttling, disk caching, and ready-to-use widgets.
 version: 0.1.1
 homepage: https://github.com/abdullahtas0/video-pool
+repository: https://github.com/abdullahtas0/video-pool
+issue_tracker: https://github.com/abdullahtas0/video-pool/issues
+topics:
+  - video
+  - video-player
+  - media
+  - cache
+  - performance
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -20,7 +28,7 @@ dependencies:
   flutter:
     sdk: flutter
   media_kit: ^1.1.11
-  media_kit_video: ^1.2.5
+  media_kit_video: '>=1.2.5 <3.0.0'
   media_kit_libs_video: ^1.0.5
 
 dev_dependencies:

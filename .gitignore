@@ -5,6 +5,7 @@
 .packages
 build/
 pubspec.lock
+.metadata
 
 # IDE
 .idea/
@@ -14,7 +15,13 @@ pubspec.lock
 # macOS
 .DS_Store
 
-# Example app generated files
+# Generated plugin registrant (root plugin project only)
+/ios/Runner/
+/ios/Flutter/
+/android/app/
+/android/local.properties
+
+# Example app generated/cached files
 example/.dart_tool/
 example/build/
 example/pubspec.lock
@@ -22,9 +29,11 @@ example/.flutter-plugins
 example/.flutter-plugins-dependencies
 example/.idea/
 example/*.iml
-
-# Generated plugin registrant
-ios/Runner/
-ios/Flutter/
-android/app/
-android/local.properties
+example/.metadata
+example/android/.gradle/
+example/android/local.properties
+example/ios/.symlinks/
+example/ios/Pods/
+example/ios/Flutter/Generated.xcconfig
+example/ios/Flutter/flutter_export_environment.sh
+example/ios/Flutter/Flutter.podspec
