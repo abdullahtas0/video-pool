@@ -1,0 +1,30 @@
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+pubspec.lock
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# macOS
+.DS_Store
+
+# Example app generated files
+example/.dart_tool/
+example/build/
+example/pubspec.lock
+example/.flutter-plugins
+example/.flutter-plugins-dependencies
+example/.idea/
+example/*.iml
+
+# Generated plugin registrant
+ios/Runner/
+ios/Flutter/
+android/app/
+android/local.properties

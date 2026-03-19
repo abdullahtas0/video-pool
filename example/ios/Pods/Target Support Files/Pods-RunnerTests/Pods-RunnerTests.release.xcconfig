@@ -1,0 +1,11 @@
+CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO
+FRAMEWORK_SEARCH_PATHS = $(inherited) "${PODS_CONFIGURATION_BUILD_DIR}/media_kit_libs_ios_video" "${PODS_CONFIGURATION_BUILD_DIR}/media_kit_video" "${PODS_CONFIGURATION_BUILD_DIR}/package_info_plus" "${PODS_CONFIGURATION_BUILD_DIR}/video_pool" "${PODS_CONFIGURATION_BUILD_DIR}/volume_controller" "${PODS_CONFIGURATION_BUILD_DIR}/wakelock_plus" "${PODS_ROOT}/../.symlinks/plugins/media_kit_libs_ios_video/ios/Frameworks" "${PODS_XCFRAMEWORKS_BUILD_DIR}/media_kit_libs_ios_video"
+GCC_PREPROCESSOR_DEFINITIONS = $(inherited) COCOAPODS=1
+HEADER_SEARCH_PATHS = $(inherited) "${PODS_CONFIGURATION_BUILD_DIR}/media_kit_libs_ios_video/media_kit_libs_ios_video.framework/Headers" "${PODS_CONFIGURATION_BUILD_DIR}/media_kit_video/media_kit_video.framework/Headers" "${PODS_CONFIGURATION_BUILD_DIR}/package_info_plus/package_info_plus.framework/Headers" "${PODS_CONFIGURATION_BUILD_DIR}/video_pool/video_pool.framework/Headers" "${PODS_CONFIGURATION_BUILD_DIR}/volume_controller/volume_controller.framework/Headers" "${PODS_CONFIGURATION_BUILD_DIR}/wakelock_plus/wakelock_plus.framework/Headers"
+OTHER_LDFLAGS = $(inherited) -framework "Ass" -framework "Avcodec" -framework "Avfilter" -framework "Avformat" -framework "Avutil" -framework "Dav1d" -framework "Freetype" -framework "Fribidi" -framework "Harfbuzz" -framework "Mbedcrypto" -framework "Mbedtls" -framework "Mbedx509" -framework "Mpv" -framework "Png16" -framework "Swresample" -framework "Swscale" -framework "Uchardet" -framework "Xml2" -framework "media_kit_libs_ios_video" -framework "media_kit_video" -framework "package_info_plus" -framework "video_pool" -framework "volume_controller" -framework "wakelock_plus"
+PODS_BUILD_DIR = ${BUILD_DIR}
+PODS_CONFIGURATION_BUILD_DIR = ${PODS_BUILD_DIR}/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)
+PODS_PODFILE_DIR_PATH = ${SRCROOT}/.
+PODS_ROOT = ${SRCROOT}/Pods
+PODS_XCFRAMEWORKS_BUILD_DIR = $(PODS_CONFIGURATION_BUILD_DIR)/XCFrameworkIntermediates
+USE_RECURSIVE_SCRIPT_INPUTS_IN_SCRIPT_PHASES = YES

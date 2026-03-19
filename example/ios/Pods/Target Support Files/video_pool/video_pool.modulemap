@@ -1,0 +1,6 @@
+framework module video_pool {
+  umbrella header "video_pool-umbrella.h"
+
+  export *
+  module * { export * }
+}

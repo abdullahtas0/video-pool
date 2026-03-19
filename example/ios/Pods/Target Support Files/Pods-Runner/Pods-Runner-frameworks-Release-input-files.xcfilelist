@@ -1,0 +1,25 @@
+${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks.sh
+${BUILT_PRODUCTS_DIR}/media_kit_libs_ios_video/media_kit_libs_ios_video.framework
+${BUILT_PRODUCTS_DIR}/media_kit_video/media_kit_video.framework
+${BUILT_PRODUCTS_DIR}/package_info_plus/package_info_plus.framework
+${BUILT_PRODUCTS_DIR}/video_pool/video_pool.framework
+${BUILT_PRODUCTS_DIR}/volume_controller/volume_controller.framework
+${BUILT_PRODUCTS_DIR}/wakelock_plus/wakelock_plus.framework
+${PODS_XCFRAMEWORKS_BUILD_DIR}/media_kit_libs_ios_video/Ass.framework/Ass
+${PODS_XCFRAMEWORKS_BUILD_DIR}/media_kit_libs_ios_video/Avcodec.framework/Avcodec
+${PODS_XCFRAMEWORKS_BUILD_DIR}/media_kit_libs_ios_video/Avfilter.framework/Avfilter
+${PODS_XCFRAMEWORKS_BUILD_DIR}/media_kit_libs_ios_video/Avformat.framework/Avformat
+${PODS_XCFRAMEWORKS_BUILD_DIR}/media_kit_libs_ios_video/Avutil.framework/Avutil
+${PODS_XCFRAMEWORKS_BUILD_DIR}/media_kit_libs_ios_video/Dav1d.framework/Dav1d
+${PODS_XCFRAMEWORKS_BUILD_DIR}/media_kit_libs_ios_video/Freetype.framework/Freetype
+${PODS_XCFRAMEWORKS_BUILD_DIR}/media_kit_libs_ios_video/Fribidi.framework/Fribidi
+${PODS_XCFRAMEWORKS_BUILD_DIR}/media_kit_libs_ios_video/Harfbuzz.framework/Harfbuzz
+${PODS_XCFRAMEWORKS_BUILD_DIR}/media_kit_libs_ios_video/Mbedcrypto.framework/Mbedcrypto
+${PODS_XCFRAMEWORKS_BUILD_DIR}/media_kit_libs_ios_video/Mbedtls.framework/Mbedtls
+${PODS_XCFRAMEWORKS_BUILD_DIR}/media_kit_libs_ios_video/Mbedx509.framework/Mbedx509
+${PODS_XCFRAMEWORKS_BUILD_DIR}/media_kit_libs_ios_video/Mpv.framework/Mpv
+${PODS_XCFRAMEWORKS_BUILD_DIR}/media_kit_libs_ios_video/Png16.framework/Png16
+${PODS_XCFRAMEWORKS_BUILD_DIR}/media_kit_libs_ios_video/Swresample.framework/Swresample
+${PODS_XCFRAMEWORKS_BUILD_DIR}/media_kit_libs_ios_video/Swscale.framework/Swscale
+${PODS_XCFRAMEWORKS_BUILD_DIR}/media_kit_libs_ios_video/Uchardet.framework/Uchardet
+${PODS_XCFRAMEWORKS_BUILD_DIR}/media_kit_libs_ios_video/Xml2.framework/Xml2

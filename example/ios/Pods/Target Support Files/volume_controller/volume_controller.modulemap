@@ -1,0 +1,6 @@
+framework module volume_controller {
+  umbrella header "volume_controller-umbrella.h"
+
+  export *
+  module * { export * }
+}
