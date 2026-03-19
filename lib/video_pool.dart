@@ -42,3 +42,17 @@ export 'src/platform/device_capabilities.dart';
 export 'src/platform/device_status.dart';
 export 'src/platform/platform_interface.dart';
 export 'src/platform/device_monitor.dart';
+
+// Audio
+export 'src/core/audio/audio_focus_manager.dart';
+
+// Widgets
+export 'src/widgets/video_pool_provider.dart';
+export 'src/widgets/video_pool_scope.dart';
+export 'src/widgets/visibility_tracker.dart';
+export 'src/widgets/video_thumbnail.dart';
+export 'src/widgets/video_overlay.dart';
+export 'src/widgets/video_error_widget.dart';
+export 'src/widgets/video_card.dart';
+export 'src/widgets/video_feed_view.dart';
+export 'src/widgets/video_list_view.dart';
