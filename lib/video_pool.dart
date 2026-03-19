@@ -17,7 +17,28 @@ export 'src/core/memory/lru_cache.dart';
 // Adapter
 export 'src/core/adapter/player_adapter.dart';
 export 'src/core/adapter/player_state.dart';
+export 'src/core/adapter/media_kit_adapter.dart';
+
+// Cache
+export 'src/core/cache/file_preload_manager.dart';
 
 // Lifecycle
 export 'src/core/lifecycle/lifecycle_state.dart';
 export 'src/core/lifecycle/lifecycle_policy.dart';
+export 'src/core/lifecycle/lifecycle_orchestrator.dart';
+
+// Memory Manager
+export 'src/core/memory/memory_manager.dart';
+
+// Pool
+export 'src/core/pool/pool_config.dart';
+export 'src/core/pool/pool_entry.dart';
+export 'src/core/pool/pool_statistics.dart';
+export 'src/core/pool/video_pool.dart';
+export 'src/core/pool/video_pool_logger.dart';
+
+// Platform
+export 'src/platform/device_capabilities.dart';
+export 'src/platform/device_status.dart';
+export 'src/platform/platform_interface.dart';
+export 'src/platform/device_monitor.dart';

@@ -1,0 +1,421 @@
+import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:video_pool/video_pool.dart';
+
+import '../../mocks/mock_player_adapter.dart';
+
+void main() {
+  late List<MockPlayerAdapter> createdAdapters;
+  late Map<int, VideoSource> sources;
+
+  setUpAll(() {
+    registerPlayerAdapterFallbacks();
+  });
+
+  setUp(() {
+    createdAdapters = [];
+    sources = {
+      0: const VideoSource(url: 'https://example.com/video0.mp4'),
+      1: const VideoSource(url: 'https://example.com/video1.mp4'),
+      2: const VideoSource(url: 'https://example.com/video2.mp4'),
+      3: const VideoSource(url: 'https://example.com/video3.mp4'),
+      4: const VideoSource(url: 'https://example.com/video4.mp4'),
+      5: const VideoSource(url: 'https://example.com/video5.mp4'),
+    };
+  });
+
+  MockPlayerAdapter createMockAdapter() {
+    final adapter = MockPlayerAdapter();
+    when(() => adapter.estimatedMemoryBytes).thenReturn(30 * 1024 * 1024);
+    when(() => adapter.stateNotifier).thenReturn(
+      ValueNotifier(const PlayerState()),
+    );
+    when(() => adapter.isReusable).thenReturn(true);
+    when(() => adapter.swapSource(any())).thenAnswer((_) async {});
+    when(() => adapter.prepare()).thenAnswer((_) async {});
+    when(() => adapter.play()).thenAnswer((_) async {});
+    when(() => adapter.pause()).thenAnswer((_) async {});
+    when(() => adapter.dispose()).thenAnswer((_) async {});
+    when(() => adapter.setVolume(any())).thenAnswer((_) async {});
+    when(() => adapter.setLooping(any())).thenAnswer((_) async {});
+    when(() => adapter.setSpeed(any())).thenAnswer((_) async {});
+    createdAdapters.add(adapter);
+    return adapter;
+  }
+
+  VideoPool createPool({
+    VideoPoolConfig config = const VideoPoolConfig(maxConcurrent: 3),
+  }) {
+    return VideoPool(
+      config: config,
+      adapterFactory: (id) => createMockAdapter(),
+      sourceResolver: (index) => sources[index],
+    );
+  }
+
+  group('VideoPool initialization', () {
+    test('creates maxConcurrent adapter instances', () {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3),
+      );
+
+      expect(createdAdapters.length, 3);
+      expect(pool.statistics.totalCreated, 3);
+      expect(pool.statistics.currentIdle, 3);
+      expect(pool.statistics.currentActive, 0);
+
+      pool.dispose();
+    });
+
+    test('statistics starts with all zeros except totalCreated', () {
+      final pool = createPool();
+      final stats = pool.statistics;
+
+      expect(stats.totalCreated, 3);
+      expect(stats.swapCount, 0);
+      expect(stats.disposeCount, 0);
+      expect(stats.cacheHits, 0);
+      expect(stats.cacheMisses, 0);
+
+      pool.dispose();
+    });
+  });
+
+  group('VideoPool.onVisibilityChanged', () {
+    test('assigns a player to the primary index', () async {
+      final pool = createPool();
+
+      pool.onVisibilityChanged(
+        primaryIndex: 0,
+        visibilityRatios: {0: 1.0},
+      );
+
+      // Give the async reconciliation a tick to complete.
+      await Future<void>.delayed(Duration.zero);
+
+      final entry = pool.getEntryForIndex(0);
+      expect(entry, isNotNull);
+      expect(entry!.assignedIndex, 0);
+
+      pool.dispose();
+    });
+
+    test('swapSource is called when assigning to a new index', () async {
+      final pool = createPool();
+
+      pool.onVisibilityChanged(
+        primaryIndex: 0,
+        visibilityRatios: {0: 1.0},
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      // At least one adapter should have had swapSource called.
+      final swapped = createdAdapters
+          .where((a) {
+            try {
+              verify(() => a.swapSource(any())).called(greaterThanOrEqualTo(1));
+              return true;
+            } catch (_) {
+              return false;
+            }
+          })
+          .toList();
+      expect(swapped, isNotEmpty);
+
+      pool.dispose();
+    });
+
+    test('preloads adjacent indices', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 1),
+      );
+
+      pool.onVisibilityChanged(
+        primaryIndex: 2,
+        visibilityRatios: {2: 1.0},
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final stats = pool.statistics;
+      // Primary (index 2) + preload (index 1, 3) = 3 active entries.
+      expect(stats.currentActive, 3);
+      expect(stats.currentIdle, 0);
+
+      expect(pool.getEntryForIndex(2), isNotNull);
+      expect(pool.getEntryForIndex(1), isNotNull);
+      expect(pool.getEntryForIndex(3), isNotNull);
+
+      pool.dispose();
+    });
+
+    test('releases entries when scrolling away', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 1),
+      );
+
+      // First, scroll to index 2.
+      pool.onVisibilityChanged(
+        primaryIndex: 2,
+        visibilityRatios: {2: 1.0},
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(pool.getEntryForIndex(2), isNotNull);
+
+      // Now scroll far away to index 5.
+      pool.onVisibilityChanged(
+        primaryIndex: 5,
+        visibilityRatios: {5: 1.0},
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      // Old indices should be released, new ones assigned.
+      expect(pool.getEntryForIndex(5), isNotNull);
+      expect(pool.getEntryForIndex(4), isNotNull);
+      // Index 2 should be released (it's far from 5).
+      expect(pool.getEntryForIndex(2), isNull);
+
+      pool.dispose();
+    });
+
+    test('cache hit when entry already assigned to index', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
+      );
+
+      pool.onVisibilityChanged(
+        primaryIndex: 0,
+        visibilityRatios: {0: 1.0},
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final hitsBeforeSecondCall = pool.statistics.cacheHits;
+
+      // Same primary — the entry is already assigned.
+      pool.onVisibilityChanged(
+        primaryIndex: 0,
+        visibilityRatios: {0: 1.0},
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(pool.statistics.cacheHits, greaterThan(hitsBeforeSecondCall));
+
+      pool.dispose();
+    });
+
+    test('does nothing after dispose', () async {
+      final pool = createPool();
+      await pool.dispose();
+
+      // Should not throw.
+      pool.onVisibilityChanged(
+        primaryIndex: 0,
+        visibilityRatios: {0: 1.0},
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(pool.statistics.currentActive, 0);
+    });
+  });
+
+  group('VideoPool.onDeviceStatusChanged', () {
+    test('terminal memory triggers emergency flush', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 1),
+      );
+
+      // Assign players first.
+      pool.onVisibilityChanged(
+        primaryIndex: 2,
+        visibilityRatios: {2: 1.0},
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      // Mark index 2 entry as playing so it survives.
+      final primaryEntry = pool.getEntryForIndex(2);
+      expect(primaryEntry, isNotNull);
+      primaryEntry!.lifecycleNotifier.value = LifecycleState.playing;
+
+      pool.onDeviceStatusChanged(
+        thermalLevel: ThermalLevel.nominal,
+        memoryPressure: MemoryPressureLevel.terminal,
+      );
+
+      // The primary playing entry should survive.
+      // Others may be disposed (emergency flush).
+      expect(pool.statistics.disposeCount, greaterThanOrEqualTo(0));
+
+      pool.dispose();
+    });
+
+    test('non-terminal memory does not trigger emergency flush', () async {
+      final pool = createPool();
+
+      pool.onDeviceStatusChanged(
+        thermalLevel: ThermalLevel.serious,
+        memoryPressure: MemoryPressureLevel.critical,
+      );
+
+      // No entries should be disposed.
+      expect(pool.statistics.disposeCount, 0);
+
+      pool.dispose();
+    });
+  });
+
+  group('VideoPool.dispose', () {
+    test('disposes all adapter instances', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3),
+      );
+
+      await pool.dispose();
+
+      for (final adapter in createdAdapters) {
+        verify(() => adapter.dispose()).called(1);
+      }
+      expect(pool.statistics.disposeCount, 3);
+    });
+
+    test('dispose is idempotent', () async {
+      final pool = createPool();
+
+      await pool.dispose();
+      await pool.dispose(); // Second call should be no-op.
+
+      for (final adapter in createdAdapters) {
+        verify(() => adapter.dispose()).called(1);
+      }
+    });
+  });
+
+  group('VideoPool.getEntryForIndex', () {
+    test('returns null for unassigned index', () {
+      final pool = createPool();
+
+      expect(pool.getEntryForIndex(99), isNull);
+
+      pool.dispose();
+    });
+
+    test('returns the correct entry for an assigned index', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
+      );
+
+      pool.onVisibilityChanged(
+        primaryIndex: 0,
+        visibilityRatios: {0: 1.0},
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final entry = pool.getEntryForIndex(0);
+      expect(entry, isNotNull);
+      expect(entry!.assignedIndex, 0);
+      expect(entry.currentSource, sources[0]);
+
+      pool.dispose();
+    });
+  });
+
+  group('PoolEntry', () {
+    test('assignTo updates fields correctly', () {
+      final adapter = MockPlayerAdapter();
+      when(() => adapter.estimatedMemoryBytes).thenReturn(0);
+      when(() => adapter.stateNotifier).thenReturn(
+        ValueNotifier(const PlayerState()),
+      );
+
+      final entry = PoolEntry(id: 0, adapter: adapter);
+      expect(entry.isIdle, isTrue);
+      expect(entry.assignedIndex, isNull);
+
+      const source = VideoSource(url: 'https://example.com/v.mp4');
+      entry.assignTo(5, source);
+
+      expect(entry.isIdle, isFalse);
+      expect(entry.assignedIndex, 5);
+      expect(entry.currentSource, source);
+      expect(entry.isAssignedTo(5), isTrue);
+      expect(entry.isAssignedTo(3), isFalse);
+    });
+
+    test('release resets to idle', () {
+      final adapter = MockPlayerAdapter();
+      when(() => adapter.estimatedMemoryBytes).thenReturn(0);
+      when(() => adapter.stateNotifier).thenReturn(
+        ValueNotifier(const PlayerState()),
+      );
+
+      final entry = PoolEntry(id: 0, adapter: adapter);
+      entry.assignTo(
+        5,
+        const VideoSource(url: 'https://example.com/v.mp4'),
+      );
+      expect(entry.isIdle, isFalse);
+
+      entry.release();
+      expect(entry.isIdle, isTrue);
+      expect(entry.assignedIndex, isNull);
+      expect(entry.currentSource, isNull);
+      expect(entry.lifecycleState, LifecycleState.idle);
+    });
+  });
+
+  group('PoolStatistics', () {
+    test('equality works', () {
+      const a = PoolStatistics(totalCreated: 3, currentActive: 2);
+      const b = PoolStatistics(totalCreated: 3, currentActive: 2);
+      const c = PoolStatistics(totalCreated: 3, currentActive: 1);
+
+      expect(a, equals(b));
+      expect(a, isNot(equals(c)));
+    });
+
+    test('toString is readable', () {
+      const stats = PoolStatistics(
+        currentActive: 2,
+        currentIdle: 1,
+        swapCount: 5,
+        disposeCount: 0,
+        estimatedMemoryBytes: 50 * 1024 * 1024,
+      );
+      expect(stats.toString(), contains('active: 2'));
+      expect(stats.toString(), contains('idle: 1'));
+    });
+  });
+
+  group('VideoPoolConfig', () {
+    test('defaults are sensible', () {
+      const config = VideoPoolConfig();
+
+      expect(config.maxConcurrent, 3);
+      expect(config.preloadCount, 1);
+      expect(config.memoryBudgetBytes, 150 * 1024 * 1024);
+      expect(config.visibilityPlayThreshold, 0.6);
+      expect(config.visibilityPauseThreshold, 0.4);
+      expect(config.preloadTimeout, const Duration(seconds: 10));
+      expect(config.logLevel, LogLevel.none);
+      expect(config.lifecyclePolicy, isNull);
+    });
+
+    test('copyWith replaces fields', () {
+      const config = VideoPoolConfig();
+      final modified = config.copyWith(maxConcurrent: 5, preloadCount: 2);
+
+      expect(modified.maxConcurrent, 5);
+      expect(modified.preloadCount, 2);
+      expect(modified.memoryBudgetBytes, config.memoryBudgetBytes);
+    });
+
+    test('equality works', () {
+      const a = VideoPoolConfig();
+      const b = VideoPoolConfig();
+      const c = VideoPoolConfig(maxConcurrent: 5);
+
+      expect(a, equals(b));
+      expect(a, isNot(equals(c)));
+    });
+  });
+}

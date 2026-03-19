@@ -7,6 +7,15 @@ environment:
   sdk: '>=3.2.0 <4.0.0'
   flutter: '>=3.16.0'
 
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.videopool
+        pluginClass: VideoPoolPlugin
+      ios:
+        pluginClass: VideoPoolPlugin
+
 dependencies:
   flutter:
     sdk: flutter
