@@ -1,6 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../adapter/player_adapter.dart';
+import '../cache/bandwidth_estimator.dart';
+import '../events/event_ring_buffer.dart';
+import '../events/metrics_snapshot.dart';
+import '../events/pool_event.dart';
 import '../cache/file_preload_manager.dart';
 import '../lifecycle/lifecycle_orchestrator.dart';
 import '../lifecycle/lifecycle_policy.dart';
@@ -9,6 +15,8 @@ import '../memory/memory_manager.dart';
 import '../memory/memory_pressure_level.dart';
 import '../models/thermal_status.dart';
 import '../models/video_source.dart';
+import '../prediction/predictive_scroll_engine.dart';
+import 'decoder_budget.dart';
 import 'pool_config.dart';
 import 'pool_entry.dart';
 import 'pool_statistics.dart';
@@ -46,14 +54,22 @@ class VideoPool {
   ///
   /// [filePreloadManager] enables disk caching. When provided, the pool
   /// checks the cache before network requests and prefetches adjacent videos.
+  ///
+  /// [decoderBudget] enables cooperative multi-pool token sharing. When
+  /// provided, the pool requests decoder tokens from the shared budget
+  /// instead of using [VideoPoolConfig.maxConcurrent] directly. This allows
+  /// multiple pools (e.g. main feed + PiP) to share hardware decoder slots.
   VideoPool({
     required this.config,
     required PlayerAdapter Function(int id) adapterFactory,
     required VideoSourceResolver sourceResolver,
     FilePreloadManager? filePreloadManager,
+    DecoderBudget? decoderBudget,
   })  : _adapterFactory = adapterFactory,
         _sourceResolver = sourceResolver,
         _filePreloadManager = filePreloadManager,
+        _decoderBudget = decoderBudget,
+        _poolId = 'pool_${_poolIdCounter++}',
         _logger = VideoPoolLogger(level: config.logLevel),
         _orchestrator = LifecycleOrchestrator(
           policy: config.lifecyclePolicy ?? const DefaultLifecyclePolicy(),
@@ -63,9 +79,23 @@ class VideoPool {
           budgetBytes: config.memoryBudgetBytes,
           logger: VideoPoolLogger(level: config.logLevel),
         ) {
+    // Determine how many entries to create.
+    final desiredCount = config.maxConcurrent.clamp(1, 10);
+    final int effectiveMaxConcurrent;
+
+    if (_decoderBudget != null) {
+      // Request tokens from the shared budget.
+      _grantedTokens = _decoderBudget.requestTokens(_poolId, desiredCount);
+      effectiveMaxConcurrent = _grantedTokens;
+
+      // Listen for token revocations targeting this pool.
+      _tokenSubscription = _decoderBudget.tokenEvents.listen(_onTokenEvent);
+    } else {
+      _grantedTokens = desiredCount;
+      effectiveMaxConcurrent = desiredCount;
+    }
+
     // Create the initial pool of player instances.
-    // Runtime clamp as a safety net beyond assert-level validation.
-    final effectiveMaxConcurrent = config.maxConcurrent.clamp(1, 10);
     for (var i = 0; i < effectiveMaxConcurrent; i++) {
       final adapter = adapterFactory(i);
       final entry = PoolEntry(id: _nextEntryId++, adapter: adapter);
@@ -75,10 +105,14 @@ class VideoPool {
     }
 
     _logger.info(
-      'Pool initialized with ${_entries.length} entries, '
+      'Pool $_poolId initialized with ${_entries.length} entries '
+      '(requested $desiredCount, granted $effectiveMaxConcurrent), '
       'budget: ${config.memoryBudgetBytes ~/ (1024 * 1024)}MB',
     );
   }
+
+  /// Global pool ID counter for generating unique pool identifiers.
+  static int _poolIdCounter = 0;
 
   /// Pool configuration.
   final VideoPoolConfig config;
@@ -88,6 +122,21 @@ class VideoPool {
 
   /// Optional disk cache manager for preloading video data.
   final FilePreloadManager? _filePreloadManager;
+
+  /// Optional shared decoder budget for cooperative multi-pool operation.
+  final DecoderBudget? _decoderBudget;
+
+  /// Unique identifier for this pool instance (used with [DecoderBudget]).
+  final String _poolId;
+
+  /// Number of decoder tokens currently granted to this pool.
+  int _grantedTokens = 0;
+
+  /// Subscription to token events from the decoder budget.
+  StreamSubscription<TokenEvent>? _tokenSubscription;
+
+  /// Estimates network bandwidth from prefetch download durations.
+  final BandwidthEstimator _bandwidthEstimator = BandwidthEstimator();
 
   /// Next entry ID (monotonically increasing, never reused).
   int _nextEntryId = 0;
@@ -119,6 +168,29 @@ class VideoPool {
   /// Whether the pool has been disposed.
   bool _disposed = false;
 
+  /// Ring buffer storing the last 1000 pool events for metrics computation.
+  final EventRingBuffer _eventBuffer = EventRingBuffer();
+
+  /// Broadcast stream controller for pool events.
+  final StreamController<PoolEvent> _eventController =
+      StreamController<PoolEvent>.broadcast(sync: true);
+
+  /// A broadcast stream of all pool events.
+  ///
+  /// Listeners receive events in real time. For aggregated metrics, use
+  /// the [metrics] getter instead.
+  Stream<PoolEvent> get eventStream => _eventController.stream;
+
+  /// Computes a point-in-time metrics snapshot from the event ring buffer.
+  MetricsSnapshot get metrics => MetricsSnapshot.fromBuffer(_eventBuffer);
+
+  /// Emits a pool event to both the ring buffer and the stream.
+  void _emit(PoolEvent event) {
+    if (_disposed) return;
+    _eventBuffer.add(event);
+    _eventController.add(event);
+  }
+
   /// Notifies listeners when reconciliation completes and entries change.
   ///
   /// Widgets like [VideoCard] listen to this to rebuild when a pool entry
@@ -148,6 +220,11 @@ class VideoPool {
 
   // --- Threshold state for deduplication ---
   Set<int> _lastPlayableIndices = {};
+
+  // --- Predictive scroll engine ---
+  final PredictiveScrollEngine _scrollEngine = const PredictiveScrollEngine();
+  int? _lastPredictedIndex;
+  int _predictionStableCount = 0;
 
   /// Called by the visibility tracker when viewport changes.
   ///
@@ -183,6 +260,17 @@ class VideoPool {
     // Store reference directly — no Map.of() copy (zero GC pressure).
     _lastVisibilityRatios = visibilityRatios;
 
+    // Resolve any outstanding scroll prediction.
+    if (_lastPredictedIndex != null) {
+      _emit(PredictionEvent(
+        predictedIndex: _lastPredictedIndex!,
+        confidence: 0.0, // resolved
+        actualIndex: primaryIndex,
+      ));
+      _lastPredictedIndex = null;
+      _predictionStableCount = 0;
+    }
+
     // "Latest wins" — bump version so stale reconciliations bail out early.
     _reconciliationVersion++;
     final version = _reconciliationVersion;
@@ -195,6 +283,64 @@ class VideoPool {
         return _reconcile(primaryIndex, visibilityRatios);
       }
     });
+  }
+
+  /// Called by scroll widgets with current scroll metrics for prediction.
+  ///
+  /// Runs the predictive scroll engine to estimate where the scroll will
+  /// land. When confidence is high enough (>= 0.7) and a [FilePreloadManager]
+  /// is available, triggers a disk prefetch for the predicted target video.
+  ///
+  /// Widgets should call this from [ScrollNotification] handlers or custom
+  /// scroll listeners.
+  void onScrollUpdate({
+    required double position,
+    required double velocity,
+    required double itemExtent,
+    required int itemCount,
+  }) {
+    if (_disposed) return;
+
+    final prediction = _scrollEngine.predict(
+      position: position,
+      velocity: velocity,
+      itemExtent: itemExtent,
+      itemCount: itemCount,
+    );
+
+    if (prediction == null) {
+      _lastPredictedIndex = null;
+      _predictionStableCount = 0;
+      return;
+    }
+
+    // Target stabilization: if prediction only changed by +/-1, don't
+    // re-trigger after the first emission.
+    if (_lastPredictedIndex != null &&
+        (prediction.targetIndex - _lastPredictedIndex!).abs() <= 1 &&
+        _predictionStableCount > 0) {
+      return;
+    }
+
+    _lastPredictedIndex = prediction.targetIndex;
+    _predictionStableCount++;
+
+    _emit(PredictionEvent(
+      predictedIndex: prediction.targetIndex,
+      confidence: prediction.confidence,
+    ));
+
+    // Budget allocation based on confidence.
+    if (prediction.confidence >= 0.7) {
+      // High confidence: trigger prefetch for target (disk cache only, no
+      // decoder allocation).
+      final source = _sourceResolver(prediction.targetIndex);
+      if (source != null && _filePreloadManager != null) {
+        _filePreloadManager.prefetch(source);
+      }
+    }
+    // Low confidence: don't do anything extra, normal adjacent preload
+    // handles it.
   }
 
   /// Internal reconciliation — the heart of the pool.
@@ -213,6 +359,7 @@ class VideoPool {
       config: config,
       thermalLevel: _thermalLevel,
       memoryPressure: _memoryPressure,
+      bandwidthEstimate: _bandwidthEstimator.estimatedBytesPerSec,
     );
 
     // Step 2: Determine currently active slot indices.
@@ -231,6 +378,14 @@ class VideoPool {
       effectivePreloadCount: limits.preloadCount,
       currentlyActive: currentlyActive,
     );
+
+    _emit(ReconcileEvent(
+      primaryIndex: primaryIndex,
+      playCount: plan.toPlay.length,
+      preloadCount: plan.toPreload.length,
+      pauseCount: plan.toPause.length,
+      releaseCount: plan.toRelease.length,
+    ));
 
     // Step 4: Execute the plan.
 
@@ -384,8 +539,24 @@ class VideoPool {
         _filePreloadManager.lockKey(source.cacheKey);
         _logger.debug('Cache hit for index $index: $cachedPath');
       } else {
-        // Fire-and-forget prefetch for future use.
-        _filePreloadManager.prefetch(source);
+        // Fire-and-forget prefetch with bandwidth measurement.
+        final sw = Stopwatch()..start();
+        _filePreloadManager.prefetch(source).then((path) {
+          sw.stop();
+          if (path != null && !_disposed) {
+            _bandwidthEstimator.addSample(
+              2 * 1024 * 1024, // bytesToFetch default
+              sw.elapsedMilliseconds,
+            );
+            _emit(BandwidthSampleEvent(
+              bytesReceived: 2 * 1024 * 1024,
+              durationMs: sw.elapsedMilliseconds,
+              estimatedBytesPerSec:
+                  _bandwidthEstimator.estimatedBytesPerSec ?? 0,
+              concurrentDownloadsCount: 1,
+            ));
+          }
+        });
       }
     }
 
@@ -395,10 +566,24 @@ class VideoPool {
     // which may point to a local file path.
     entry.assignTo(index, source);
     try {
+      final sw = Stopwatch()..start();
       await entry.adapter.swapSource(effectiveSource);
+      sw.stop();
       _swapCount++;
+      _emit(SwapEvent(
+        entryId: entry.id,
+        fromIndex: -1,
+        toIndex: index,
+        durationMs: sw.elapsedMilliseconds,
+        isWarmStart: effectiveSource != source,
+      ));
     } catch (e, st) {
       _logger.error('swapSource failed for entry ${entry.id}', e, st);
+      _emit(ErrorEvent(
+        code: 'SWAP_FAILED',
+        message: 'swapSource failed for entry ${entry.id}: $e',
+        fatal: false,
+      ));
       if (_filePreloadManager != null) {
         _filePreloadManager.unlockKey(source.cacheKey);
       }
@@ -474,6 +659,13 @@ class VideoPool {
     return null;
   }
 
+  /// Handles token events from the shared [DecoderBudget].
+  void _onTokenEvent(TokenEvent event) {
+    if (_disposed) return;
+    // Forward token events to the pool's event stream.
+    _emit(event);
+  }
+
   /// Get current pool statistics.
   PoolStatistics get statistics {
     var active = 0;
@@ -507,6 +699,16 @@ class VideoPool {
     if (_disposed) return;
     _thermalLevel = thermalLevel;
     _memoryPressure = memoryPressure;
+
+    _emit(ThrottleEvent(
+      thermalLevel: thermalLevel,
+      memoryPressure: memoryPressure,
+      effectiveMaxConcurrent: _orchestrator.computeEffectiveLimits(
+        config: config,
+        thermalLevel: thermalLevel,
+        memoryPressure: memoryPressure,
+      ).maxConcurrent,
+    ));
 
     _memoryManager.scaleBudget(memoryPressure);
 
@@ -625,6 +827,17 @@ class VideoPool {
       _entries.remove(entry);
     }
 
+    // Release tokens for disposed entries back to the shared budget.
+    if (_decoderBudget != null && toRemove.isNotEmpty) {
+      _decoderBudget.releaseTokens(_poolId, toRemove.length);
+      _grantedTokens = (_grantedTokens - toRemove.length).clamp(0, _grantedTokens);
+    }
+
+    _emit(EmergencyFlushEvent(
+      survivorEntryId: primary?.id,
+      disposedCount: toRemove.length,
+    ));
+
     _logger.warning(
       'Emergency flush complete. Remaining entries: ${_entries.length}',
     );
@@ -636,6 +849,18 @@ class VideoPool {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+
+    // Cancel token subscription before releasing tokens, to prevent
+    // the listener from trying to emit through the closing event controller.
+    await _tokenSubscription?.cancel();
+
+    // Release all tokens back to the shared budget.
+    if (_decoderBudget != null && _grantedTokens > 0) {
+      _decoderBudget.releaseTokens(_poolId, _grantedTokens);
+      _grantedTokens = 0;
+    }
+
+    await _eventController.close();
 
     _logger.info('Disposing pool with ${_entries.length} entries');
     reconciliationNotifier.dispose();

@@ -24,6 +24,9 @@ public class VideoPoolPlugin: NSObject, FlutterPlugin {
 
         registrar.addMethodCallDelegate(instance, channel: methodChannel)
         eventChannel.setStreamHandler(instance.deviceMonitor)
+
+        // Register thumbnail extraction channel.
+        ThumbnailExtractor.register(with: registrar)
     }
 
     private func setupInterruptionObserver() {

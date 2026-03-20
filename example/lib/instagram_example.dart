@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_pool/video_pool.dart';
+import 'event_debug_overlay.dart';
 
 /// Short video clips for the Instagram-style feed.
 final _videos = [
@@ -64,7 +65,8 @@ class InstagramExample extends StatelessWidget {
           final videoIdx = _videoIndexForItem(index);
           return videoIdx >= 0 ? _videos[videoIdx] : null;
         },
-        child: VideoListView(
+        child: EventDebugOverlay(
+          child: VideoListView(
           itemCount: _totalItems,
           itemExtent: 400,
           itemBuilder: (context, index) {
@@ -103,6 +105,7 @@ class InstagramExample extends StatelessWidget {
               ),
             );
           },
+          ),
         ),
       ),
     );

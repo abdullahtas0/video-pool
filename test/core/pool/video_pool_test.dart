@@ -471,4 +471,256 @@ void main() {
       expect(a, isNot(equals(c)));
     });
   });
+
+  group('VideoPool.onScrollUpdate', () {
+    test('emits PredictionEvent for high velocity', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
+      );
+
+      final events = <PoolEvent>[];
+      pool.eventStream.listen(events.add);
+
+      pool.onScrollUpdate(
+        position: 0.0,
+        velocity: 5000.0,
+        itemExtent: 800.0,
+        itemCount: 100,
+      );
+
+      final predictionEvents =
+          events.whereType<PredictionEvent>().toList();
+      expect(predictionEvents, hasLength(1));
+      expect(predictionEvents.first.predictedIndex, greaterThan(0));
+      expect(predictionEvents.first.confidence, greaterThan(0.0));
+      expect(predictionEvents.first.actualIndex, isNull);
+
+      pool.dispose();
+    });
+
+    test('skips prediction for low velocity', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
+      );
+
+      final events = <PoolEvent>[];
+      pool.eventStream.listen(events.add);
+
+      pool.onScrollUpdate(
+        position: 0.0,
+        velocity: 100.0, // below threshold (0.5 * 800 = 400)
+        itemExtent: 800.0,
+        itemCount: 100,
+      );
+
+      final predictionEvents =
+          events.whereType<PredictionEvent>().toList();
+      expect(predictionEvents, isEmpty);
+
+      pool.dispose();
+    });
+
+    test('resolves prediction on next visibility change', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
+      );
+
+      final events = <PoolEvent>[];
+      pool.eventStream.listen(events.add);
+
+      // First, make a prediction.
+      pool.onScrollUpdate(
+        position: 0.0,
+        velocity: 5000.0,
+        itemExtent: 800.0,
+        itemCount: 100,
+      );
+
+      // Then user stops scrolling and visibility settles.
+      pool.onVisibilityChanged(
+        primaryIndex: 2,
+        visibilityRatios: {2: 1.0},
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final predictionEvents =
+          events.whereType<PredictionEvent>().toList();
+      // Should have 2: one prediction, one resolution.
+      expect(predictionEvents.length, greaterThanOrEqualTo(2));
+
+      final resolved =
+          predictionEvents.where((e) => e.actualIndex != null).toList();
+      expect(resolved, hasLength(1));
+      expect(resolved.first.actualIndex, 2);
+
+      pool.dispose();
+    });
+
+    test('does nothing after dispose', () async {
+      final pool = createPool();
+      await pool.dispose();
+
+      // Should not throw.
+      pool.onScrollUpdate(
+        position: 0.0,
+        velocity: 5000.0,
+        itemExtent: 800.0,
+        itemCount: 100,
+      );
+    });
+  });
+
+  group('VideoPool with DecoderBudget', () {
+    test('uses decoderBudget when provided', () async {
+      final budget = GlobalDecoderBudget(totalTokens: 4);
+
+      final pool = VideoPool(
+        config: const VideoPoolConfig(maxConcurrent: 3),
+        adapterFactory: (id) => createMockAdapter(),
+        sourceResolver: (index) => sources[index],
+        decoderBudget: budget,
+      );
+
+      // Budget should have been requested.
+      final totalAllocated =
+          budget.allocations.values.fold(0, (a, b) => a + b);
+      expect(totalAllocated, 3);
+      expect(createdAdapters.length, 3);
+
+      await pool.dispose();
+      budget.dispose();
+    });
+
+    test('uses decoderBudget and gets fewer tokens than desired', () async {
+      final budget = GlobalDecoderBudget(totalTokens: 2);
+
+      final pool = VideoPool(
+        config: const VideoPoolConfig(maxConcurrent: 3),
+        adapterFactory: (id) => createMockAdapter(),
+        sourceResolver: (index) => sources[index],
+        decoderBudget: budget,
+      );
+
+      // Only 2 tokens available, so only 2 entries created.
+      expect(createdAdapters.length, 2);
+      expect(pool.statistics.totalCreated, 2);
+      expect(pool.statistics.currentIdle, 2);
+
+      await pool.dispose();
+      budget.dispose();
+    });
+
+    test('releases tokens on dispose', () async {
+      final budget = GlobalDecoderBudget(totalTokens: 4);
+
+      final pool = VideoPool(
+        config: const VideoPoolConfig(maxConcurrent: 3),
+        adapterFactory: (id) => createMockAdapter(),
+        sourceResolver: (index) => sources[index],
+        decoderBudget: budget,
+      );
+
+      expect(budget.allocations.values.fold(0, (a, b) => a + b), 3);
+
+      await pool.dispose();
+
+      // All tokens should be released back.
+      expect(budget.allocations, isEmpty);
+
+      budget.dispose();
+    });
+  });
+
+  group('VideoPool.eventStream', () {
+    test('emits ReconcileEvent on visibility change', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
+      );
+
+      final events = <PoolEvent>[];
+      pool.eventStream.listen(events.add);
+
+      pool.onVisibilityChanged(
+        primaryIndex: 0,
+        visibilityRatios: {0: 1.0},
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final reconcileEvents = events.whereType<ReconcileEvent>().toList();
+      expect(reconcileEvents, isNotEmpty);
+      expect(reconcileEvents.last.primaryIndex, 0);
+      expect(reconcileEvents.last.playCount, 1);
+
+      pool.dispose();
+    });
+
+    test('emits SwapEvent when entry is assigned', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
+      );
+
+      final events = <PoolEvent>[];
+      pool.eventStream.listen(events.add);
+
+      pool.onVisibilityChanged(
+        primaryIndex: 0,
+        visibilityRatios: {0: 1.0},
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final swapEvents = events.whereType<SwapEvent>().toList();
+      expect(swapEvents, isNotEmpty);
+      expect(swapEvents.last.toIndex, 0);
+      expect(swapEvents.last.durationMs, greaterThanOrEqualTo(0));
+
+      pool.dispose();
+    });
+
+    test('emits ThrottleEvent on device status change', () async {
+      final pool = createPool();
+
+      final events = <PoolEvent>[];
+      pool.eventStream.listen(events.add);
+
+      pool.onDeviceStatusChanged(
+        thermalLevel: ThermalLevel.serious,
+        memoryPressure: MemoryPressureLevel.normal,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final throttleEvents = events.whereType<ThrottleEvent>().toList();
+      expect(throttleEvents, hasLength(1));
+      expect(throttleEvents.first.thermalLevel, ThermalLevel.serious);
+
+      pool.dispose();
+    });
+
+    test('metrics getter returns snapshot with data', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
+      );
+
+      pool.onVisibilityChanged(
+        primaryIndex: 0,
+        visibilityRatios: {0: 1.0},
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final m = pool.metrics;
+      expect(m.totalEvents, greaterThan(0));
+      expect(m.computedAt, greaterThan(0));
+
+      pool.dispose();
+    });
+
+    test('eventStream closes after dispose', () async {
+      final pool = createPool();
+
+      var done = false;
+      pool.eventStream.listen(null, onDone: () => done = true);
+
+      await pool.dispose();
+      expect(done, isTrue);
+    });
+  });
 }

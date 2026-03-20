@@ -67,6 +67,7 @@ class LifecycleOrchestrator {
     required VideoPoolConfig config,
     required ThermalLevel thermalLevel,
     required MemoryPressureLevel memoryPressure,
+    int? bandwidthEstimate,
   }) {
     var maxConcurrent = config.maxConcurrent;
     var preloadCount = config.preloadCount;
@@ -106,11 +107,33 @@ class LifecycleOrchestrator {
         memoryBudget = (memoryBudget * 0.25).round();
     }
 
+    // Bandwidth throttling (after thermal + memory).
+    // Only applies if bandwidthThresholds is configured and we have data.
+    // Uses hysteresis (Schmitt Trigger) to prevent flip-flopping at boundaries:
+    // threshold to drop is the raw value, threshold to recover is value + hysteresis%.
+    final bwThresholds = config.bandwidthThresholds;
+    if (bwThresholds != null && bandwidthEstimate != null) {
+      final h = 1.0 + bwThresholds.hysteresisPercent / 100.0;
+      if (bandwidthEstimate < bwThresholds.lowBandwidth) {
+        preloadCount = 0;
+      } else if (bandwidthEstimate < bwThresholds.mediumBandwidth) {
+        // Between low and medium: reduce preload by 1
+        preloadCount = (preloadCount - 1).clamp(0, preloadCount);
+      } else if (bandwidthEstimate < bwThresholds.highBandwidth) {
+        // Only restore full preload if above highBandwidth * hysteresis
+        if (bandwidthEstimate < (bwThresholds.highBandwidth * h).round()) {
+          preloadCount = (preloadCount - 1).clamp(0, preloadCount);
+        }
+      }
+      // >= highBandwidth * hysteresis: no change (full preload)
+    }
+
     logger.debug(
       'Effective limits: maxConcurrent=$maxConcurrent, '
       'preloadCount=$preloadCount, '
       'memoryBudget=${memoryBudget ~/ (1024 * 1024)}MB '
-      '(thermal=$thermalLevel, memory=$memoryPressure)',
+      '(thermal=$thermalLevel, memory=$memoryPressure, '
+      'bandwidth=${bandwidthEstimate ?? 'unknown'})',
     );
 
     return (

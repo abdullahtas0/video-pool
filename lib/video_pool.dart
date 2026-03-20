@@ -20,7 +20,9 @@ export 'src/core/adapter/player_state.dart';
 export 'src/core/adapter/media_kit_adapter.dart';
 
 // Cache
+export 'src/core/cache/bandwidth_estimator.dart';
 export 'src/core/cache/file_preload_manager.dart';
+export 'src/core/cache/thumbnail_extractor.dart';
 
 // Lifecycle
 export 'src/core/lifecycle/lifecycle_state.dart';
@@ -30,7 +32,16 @@ export 'src/core/lifecycle/lifecycle_orchestrator.dart';
 // Memory Manager
 export 'src/core/memory/memory_manager.dart';
 
+// Events
+export 'src/core/events/pool_event.dart';
+export 'src/core/events/metrics_snapshot.dart';
+
+// Prediction
+export 'src/core/prediction/predictive_scroll_engine.dart';
+
 // Pool
+export 'src/core/pool/bandwidth_thresholds.dart';
+export 'src/core/pool/decoder_budget.dart';
 export 'src/core/pool/pool_config.dart';
 export 'src/core/pool/pool_entry.dart';
 export 'src/core/pool/pool_statistics.dart';

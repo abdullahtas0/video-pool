@@ -51,7 +51,7 @@ VideoPoolScope(
 
 ```yaml
 dependencies:
-  video_pool: ^0.2.1
+  video_pool: ^0.3.0
   media_kit: ^1.1.11
   media_kit_video: ^1.2.5
   media_kit_libs_video: ^1.0.5
