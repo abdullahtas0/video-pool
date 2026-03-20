@@ -16,7 +16,11 @@ All notable changes to this project will be documented in this file.
 - **Auto-Thumbnail Extraction** — Extracts first-frame thumbnails from cached video files using native APIs (iOS `AVAssetImageGenerator`, Android `MediaMetadataRetriever`). FastStart (moov atom) detection. Concurrency-limited extraction queue
 
 ### Example App
-- Added event debug overlay (toggle with bug icon FAB) showing live pool events with color-coded display
+- Rebuilt as production-grade 3-tab showcase: Feed (TikTok), Discover (Instagram), Insights (live dashboard)
+- Feed tab: full-screen video with lifecycle badges, cache status, social buttons, progress bar
+- Insights tab: real-time metric cards, pool entry visualization, device status, color-coded event stream
+- Tab switching pauses/resumes pool to prevent background audio
+- Event debug overlay (toggle with bug icon FAB)
 
 ### Testing
 - 227 unit tests (up from 132)
