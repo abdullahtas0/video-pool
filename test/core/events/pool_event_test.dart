@@ -139,8 +139,34 @@ void main() {
     });
   });
 
+  group('PredictionEvent', () {
+    test('stores prediction fields with null actualIndex', () {
+      final event = PredictionEvent(
+        predictedIndex: 5,
+        confidence: 0.85,
+      );
+
+      expect(event.predictedIndex, 5);
+      expect(event.confidence, 0.85);
+      expect(event.actualIndex, isNull);
+      expect(event.timestamp, greaterThan(0));
+    });
+
+    test('stores resolved prediction with actualIndex', () {
+      final event = PredictionEvent(
+        predictedIndex: 5,
+        confidence: 0.0,
+        actualIndex: 6,
+      );
+
+      expect(event.predictedIndex, 5);
+      expect(event.confidence, 0.0);
+      expect(event.actualIndex, 6);
+    });
+  });
+
   group('Exhaustive switch', () {
-    test('sealed class enables exhaustive switching on all 8 types', () {
+    test('sealed class enables exhaustive switching on all 9 types', () {
       final PoolEvent event = SwapEvent(
         entryId: 1,
         fromIndex: 0,
@@ -158,6 +184,7 @@ void main() {
         EmergencyFlushEvent() => 'emergency',
         BandwidthSampleEvent() => 'bandwidth',
         ErrorEvent() => 'error',
+        PredictionEvent() => 'prediction',
       };
 
       expect(label, 'swap');

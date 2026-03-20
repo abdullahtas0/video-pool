@@ -15,6 +15,7 @@ import '../memory/memory_manager.dart';
 import '../memory/memory_pressure_level.dart';
 import '../models/thermal_status.dart';
 import '../models/video_source.dart';
+import '../prediction/predictive_scroll_engine.dart';
 import 'pool_config.dart';
 import 'pool_entry.dart';
 import 'pool_statistics.dart';
@@ -181,6 +182,11 @@ class VideoPool {
   // --- Threshold state for deduplication ---
   Set<int> _lastPlayableIndices = {};
 
+  // --- Predictive scroll engine ---
+  final PredictiveScrollEngine _scrollEngine = const PredictiveScrollEngine();
+  int? _lastPredictedIndex;
+  int _predictionStableCount = 0;
+
   /// Called by the visibility tracker when viewport changes.
   ///
   /// [primaryIndex] is the most visible slot index.
@@ -215,6 +221,17 @@ class VideoPool {
     // Store reference directly — no Map.of() copy (zero GC pressure).
     _lastVisibilityRatios = visibilityRatios;
 
+    // Resolve any outstanding scroll prediction.
+    if (_lastPredictedIndex != null) {
+      _emit(PredictionEvent(
+        predictedIndex: _lastPredictedIndex!,
+        confidence: 0.0, // resolved
+        actualIndex: primaryIndex,
+      ));
+      _lastPredictedIndex = null;
+      _predictionStableCount = 0;
+    }
+
     // "Latest wins" — bump version so stale reconciliations bail out early.
     _reconciliationVersion++;
     final version = _reconciliationVersion;
@@ -227,6 +244,64 @@ class VideoPool {
         return _reconcile(primaryIndex, visibilityRatios);
       }
     });
+  }
+
+  /// Called by scroll widgets with current scroll metrics for prediction.
+  ///
+  /// Runs the predictive scroll engine to estimate where the scroll will
+  /// land. When confidence is high enough (>= 0.7) and a [FilePreloadManager]
+  /// is available, triggers a disk prefetch for the predicted target video.
+  ///
+  /// Widgets should call this from [ScrollNotification] handlers or custom
+  /// scroll listeners.
+  void onScrollUpdate({
+    required double position,
+    required double velocity,
+    required double itemExtent,
+    required int itemCount,
+  }) {
+    if (_disposed) return;
+
+    final prediction = _scrollEngine.predict(
+      position: position,
+      velocity: velocity,
+      itemExtent: itemExtent,
+      itemCount: itemCount,
+    );
+
+    if (prediction == null) {
+      _lastPredictedIndex = null;
+      _predictionStableCount = 0;
+      return;
+    }
+
+    // Target stabilization: if prediction only changed by +/-1, don't
+    // re-trigger after the first emission.
+    if (_lastPredictedIndex != null &&
+        (prediction.targetIndex - _lastPredictedIndex!).abs() <= 1 &&
+        _predictionStableCount > 0) {
+      return;
+    }
+
+    _lastPredictedIndex = prediction.targetIndex;
+    _predictionStableCount++;
+
+    _emit(PredictionEvent(
+      predictedIndex: prediction.targetIndex,
+      confidence: prediction.confidence,
+    ));
+
+    // Budget allocation based on confidence.
+    if (prediction.confidence >= 0.7) {
+      // High confidence: trigger prefetch for target (disk cache only, no
+      // decoder allocation).
+      final source = _sourceResolver(prediction.targetIndex);
+      if (source != null && _filePreloadManager != null) {
+        _filePreloadManager.prefetch(source);
+      }
+    }
+    // Low confidence: don't do anything extra, normal adjacent preload
+    // handles it.
   }
 
   /// Internal reconciliation — the heart of the pool.

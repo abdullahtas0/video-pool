@@ -18,6 +18,7 @@ class MetricsSnapshot {
     required this.throttleCount,
     required this.totalEvents,
     this.avgBandwidthBytesPerSec = 0.0,
+    this.predictionAccuracy = 0.0,
   });
 
   /// The wall-clock time this snapshot was computed, in milliseconds since epoch.
@@ -46,6 +47,12 @@ class MetricsSnapshot {
   /// [BandwidthSampleEvent]s. Returns 0.0 when there are no samples.
   final double avgBandwidthBytesPerSec;
 
+  /// The ratio of resolved predictions where |predicted - actual| <= 1.
+  ///
+  /// Only [PredictionEvent]s with a non-null [PredictionEvent.actualIndex] are
+  /// considered. Returns 0.0 when there are no resolved predictions.
+  final double predictionAccuracy;
+
   /// Computes a [MetricsSnapshot] from the current contents of [buffer].
   ///
   /// Iterates over the buffer's snapshot exactly once, accumulating all
@@ -60,6 +67,8 @@ class MetricsSnapshot {
     var throttles = 0;
     var bandwidthSampleCount = 0;
     var bandwidthSum = 0;
+    var predictionResolvedCount = 0;
+    var predictionAccurateCount = 0;
 
     for (final event in events) {
       switch (event) {
@@ -81,6 +90,13 @@ class MetricsSnapshot {
         case BandwidthSampleEvent(:final estimatedBytesPerSec):
           bandwidthSampleCount++;
           bandwidthSum += estimatedBytesPerSec;
+        case PredictionEvent(:final predictedIndex, :final actualIndex):
+          if (actualIndex != null) {
+            predictionResolvedCount++;
+            if ((predictedIndex - actualIndex).abs() <= 1) {
+              predictionAccurateCount++;
+            }
+          }
         case _:
           break;
       }
@@ -97,6 +113,9 @@ class MetricsSnapshot {
       totalEvents: events.length,
       avgBandwidthBytesPerSec: bandwidthSampleCount > 0
           ? bandwidthSum / bandwidthSampleCount.toDouble()
+          : 0.0,
+      predictionAccuracy: predictionResolvedCount > 0
+          ? predictionAccurateCount / predictionResolvedCount.toDouble()
           : 0.0,
     );
   }

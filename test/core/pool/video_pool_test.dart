@@ -472,6 +472,104 @@ void main() {
     });
   });
 
+  group('VideoPool.onScrollUpdate', () {
+    test('emits PredictionEvent for high velocity', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
+      );
+
+      final events = <PoolEvent>[];
+      pool.eventStream.listen(events.add);
+
+      pool.onScrollUpdate(
+        position: 0.0,
+        velocity: 5000.0,
+        itemExtent: 800.0,
+        itemCount: 100,
+      );
+
+      final predictionEvents =
+          events.whereType<PredictionEvent>().toList();
+      expect(predictionEvents, hasLength(1));
+      expect(predictionEvents.first.predictedIndex, greaterThan(0));
+      expect(predictionEvents.first.confidence, greaterThan(0.0));
+      expect(predictionEvents.first.actualIndex, isNull);
+
+      pool.dispose();
+    });
+
+    test('skips prediction for low velocity', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
+      );
+
+      final events = <PoolEvent>[];
+      pool.eventStream.listen(events.add);
+
+      pool.onScrollUpdate(
+        position: 0.0,
+        velocity: 100.0, // below threshold (0.5 * 800 = 400)
+        itemExtent: 800.0,
+        itemCount: 100,
+      );
+
+      final predictionEvents =
+          events.whereType<PredictionEvent>().toList();
+      expect(predictionEvents, isEmpty);
+
+      pool.dispose();
+    });
+
+    test('resolves prediction on next visibility change', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
+      );
+
+      final events = <PoolEvent>[];
+      pool.eventStream.listen(events.add);
+
+      // First, make a prediction.
+      pool.onScrollUpdate(
+        position: 0.0,
+        velocity: 5000.0,
+        itemExtent: 800.0,
+        itemCount: 100,
+      );
+
+      // Then user stops scrolling and visibility settles.
+      pool.onVisibilityChanged(
+        primaryIndex: 2,
+        visibilityRatios: {2: 1.0},
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final predictionEvents =
+          events.whereType<PredictionEvent>().toList();
+      // Should have 2: one prediction, one resolution.
+      expect(predictionEvents.length, greaterThanOrEqualTo(2));
+
+      final resolved =
+          predictionEvents.where((e) => e.actualIndex != null).toList();
+      expect(resolved, hasLength(1));
+      expect(resolved.first.actualIndex, 2);
+
+      pool.dispose();
+    });
+
+    test('does nothing after dispose', () async {
+      final pool = createPool();
+      await pool.dispose();
+
+      // Should not throw.
+      pool.onScrollUpdate(
+        position: 0.0,
+        velocity: 5000.0,
+        itemExtent: 800.0,
+        itemCount: 100,
+      );
+    });
+  });
+
   group('VideoPool.eventStream', () {
     test('emits ReconcileEvent on visibility change', () async {
       final pool = createPool(

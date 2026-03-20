@@ -35,6 +35,9 @@ export 'src/core/memory/memory_manager.dart';
 export 'src/core/events/pool_event.dart';
 export 'src/core/events/metrics_snapshot.dart';
 
+// Prediction
+export 'src/core/prediction/predictive_scroll_engine.dart';
+
 // Pool
 export 'src/core/pool/bandwidth_thresholds.dart';
 export 'src/core/pool/pool_config.dart';

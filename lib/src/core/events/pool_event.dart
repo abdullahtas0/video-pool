@@ -219,3 +219,29 @@ class ErrorEvent extends PoolEvent {
   /// Whether the error is fatal (requires user intervention or restart).
   final bool fatal;
 }
+
+/// Emitted when the predictive scroll engine makes or resolves a prediction.
+///
+/// When first emitted, [actualIndex] is `null` — the prediction is outstanding.
+/// When the user stops scrolling, a second [PredictionEvent] is emitted with
+/// [actualIndex] set to the true landing index, allowing accuracy tracking.
+class PredictionEvent extends PoolEvent {
+  /// Creates a prediction event.
+  PredictionEvent({
+    required this.predictedIndex,
+    required this.confidence,
+    this.actualIndex,
+  });
+
+  /// The feed index the engine predicted the scroll would land on.
+  final int predictedIndex;
+
+  /// Confidence of this prediction (0.0 – 1.0).
+  ///
+  /// A confidence of 0.0 on a resolved event (where [actualIndex] is set)
+  /// indicates this is a resolution, not a fresh prediction.
+  final double confidence;
+
+  /// The actual index the user landed on, or `null` if not yet resolved.
+  final int? actualIndex;
+}
