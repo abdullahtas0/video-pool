@@ -40,6 +40,7 @@ export 'src/core/prediction/predictive_scroll_engine.dart';
 
 // Pool
 export 'src/core/pool/bandwidth_thresholds.dart';
+export 'src/core/pool/decoder_budget.dart';
 export 'src/core/pool/pool_config.dart';
 export 'src/core/pool/pool_entry.dart';
 export 'src/core/pool/pool_statistics.dart';

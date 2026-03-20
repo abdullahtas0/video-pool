@@ -570,6 +570,67 @@ void main() {
     });
   });
 
+  group('VideoPool with DecoderBudget', () {
+    test('uses decoderBudget when provided', () async {
+      final budget = GlobalDecoderBudget(totalTokens: 4);
+
+      final pool = VideoPool(
+        config: const VideoPoolConfig(maxConcurrent: 3),
+        adapterFactory: (id) => createMockAdapter(),
+        sourceResolver: (index) => sources[index],
+        decoderBudget: budget,
+      );
+
+      // Budget should have been requested.
+      final totalAllocated =
+          budget.allocations.values.fold(0, (a, b) => a + b);
+      expect(totalAllocated, 3);
+      expect(createdAdapters.length, 3);
+
+      await pool.dispose();
+      budget.dispose();
+    });
+
+    test('uses decoderBudget and gets fewer tokens than desired', () async {
+      final budget = GlobalDecoderBudget(totalTokens: 2);
+
+      final pool = VideoPool(
+        config: const VideoPoolConfig(maxConcurrent: 3),
+        adapterFactory: (id) => createMockAdapter(),
+        sourceResolver: (index) => sources[index],
+        decoderBudget: budget,
+      );
+
+      // Only 2 tokens available, so only 2 entries created.
+      expect(createdAdapters.length, 2);
+      expect(pool.statistics.totalCreated, 2);
+      expect(pool.statistics.currentIdle, 2);
+
+      await pool.dispose();
+      budget.dispose();
+    });
+
+    test('releases tokens on dispose', () async {
+      final budget = GlobalDecoderBudget(totalTokens: 4);
+
+      final pool = VideoPool(
+        config: const VideoPoolConfig(maxConcurrent: 3),
+        adapterFactory: (id) => createMockAdapter(),
+        sourceResolver: (index) => sources[index],
+        decoderBudget: budget,
+      );
+
+      expect(budget.allocations.values.fold(0, (a, b) => a + b), 3);
+
+      await pool.dispose();
+
+      // All tokens should be released back.
+      expect(budget.allocations, isEmpty);
+
+      budget.dispose();
+    });
+  });
+
   group('VideoPool.eventStream', () {
     test('emits ReconcileEvent on visibility change', () async {
       final pool = createPool(

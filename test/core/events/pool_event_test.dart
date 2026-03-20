@@ -165,8 +165,45 @@ void main() {
     });
   });
 
+  group('TokenEvent types', () {
+    test('TokenRequestEvent stores request and grant counts', () {
+      final event = TokenRequestEvent(
+        poolId: 'pool_1',
+        requested: 3,
+        granted: 2,
+      );
+
+      expect(event.poolId, 'pool_1');
+      expect(event.requested, 3);
+      expect(event.granted, 2);
+      expect(event.timestamp, greaterThan(0));
+    });
+
+    test('TokenRevokedEvent stores revoked count and reason', () {
+      final event = TokenRevokedEvent(
+        poolId: 'pool_2',
+        revokedCount: 1,
+        reason: 'budget_reduced',
+      );
+
+      expect(event.poolId, 'pool_2');
+      expect(event.revokedCount, 1);
+      expect(event.reason, 'budget_reduced');
+    });
+
+    test('TokenGrantedEvent stores granted count', () {
+      final event = TokenGrantedEvent(
+        poolId: 'pool_1',
+        grantedCount: 2,
+      );
+
+      expect(event.poolId, 'pool_1');
+      expect(event.grantedCount, 2);
+    });
+  });
+
   group('Exhaustive switch', () {
-    test('sealed class enables exhaustive switching on all 9 types', () {
+    test('sealed class enables exhaustive switching on all types', () {
       final PoolEvent event = SwapEvent(
         entryId: 1,
         fromIndex: 0,
@@ -185,6 +222,7 @@ void main() {
         BandwidthSampleEvent() => 'bandwidth',
         ErrorEvent() => 'error',
         PredictionEvent() => 'prediction',
+        TokenEvent() => 'token',
       };
 
       expect(label, 'swap');

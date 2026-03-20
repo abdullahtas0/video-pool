@@ -175,6 +175,70 @@ class EmergencyFlushEvent extends PoolEvent {
   final int disposedCount;
 }
 
+/// Base class for all token-related events in the decoder budget system.
+///
+/// Token events are emitted by [DecoderBudget] implementations when tokens
+/// are requested, granted (released back), or revoked.
+sealed class TokenEvent extends PoolEvent {
+  /// Creates a token event for the given [poolId].
+  TokenEvent({required this.poolId});
+
+  /// The pool that this token event relates to.
+  final String poolId;
+}
+
+/// Emitted when a pool requests tokens from the decoder budget.
+///
+/// Records both the [requested] amount and the actually [granted] amount,
+/// which may be less if the budget is partially or fully exhausted.
+class TokenRequestEvent extends TokenEvent {
+  /// Creates a token request event.
+  TokenRequestEvent({
+    required super.poolId,
+    required this.requested,
+    required this.granted,
+  });
+
+  /// The number of tokens the pool requested.
+  final int requested;
+
+  /// The number of tokens actually granted (<= [requested]).
+  final int granted;
+}
+
+/// Emitted when tokens are revoked from a pool due to budget reduction.
+///
+/// This can happen when [GlobalDecoderBudget.reduceBudget] is called
+/// (e.g. after a decoder initialization failure) and the pool is
+/// over-allocated.
+class TokenRevokedEvent extends TokenEvent {
+  /// Creates a token revoked event.
+  TokenRevokedEvent({
+    required super.poolId,
+    required this.revokedCount,
+    required this.reason,
+  });
+
+  /// The number of tokens revoked.
+  final int revokedCount;
+
+  /// A machine-readable reason for the revocation (e.g. `budget_reduced`).
+  final String reason;
+}
+
+/// Emitted when tokens are released back to the budget, making them
+/// available for other pools.
+class TokenGrantedEvent extends TokenEvent {
+  /// Creates a token granted event.
+  TokenGrantedEvent({
+    required super.poolId,
+    required this.grantedCount,
+  });
+
+  /// The number of tokens that were released (now available).
+  final int grantedCount;
+}
+
 /// A bandwidth measurement sample from a completed download.
 ///
 /// Emitted after each successful prefetch, allowing consumers to track
