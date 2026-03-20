@@ -50,6 +50,8 @@ class VideoListView extends StatefulWidget {
 
 class _VideoListViewState extends State<VideoListView> {
   final VisibilityTracker _visibilityTracker = const VisibilityTracker();
+  int _lastPrimaryIndex = -1;
+  int _lastVisibleCount = 0;
 
   @override
   void initState() {
@@ -106,10 +108,18 @@ class _VideoListViewState extends State<VideoListView> {
     );
 
     if (update.primaryIndex >= 0) {
-      pool.onVisibilityChanged(
-        primaryIndex: update.primaryIndex,
-        visibilityRatios: update.visibilityRatios,
-      );
+      // Coarse filter: only notify if primary or visible count changed.
+      // Fine-grained ratio filtering is handled by pool-level threshold
+      // state machine (VideoPool.onVisibilityChanged).
+      if (update.primaryIndex != _lastPrimaryIndex ||
+          update.visibilityRatios.length != _lastVisibleCount) {
+        _lastPrimaryIndex = update.primaryIndex;
+        _lastVisibleCount = update.visibilityRatios.length;
+        pool.onVisibilityChanged(
+          primaryIndex: update.primaryIndex,
+          visibilityRatios: update.visibilityRatios,
+        );
+      }
     }
 
     return false;

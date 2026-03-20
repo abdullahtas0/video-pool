@@ -192,14 +192,67 @@ void main() {
 
       final hitsBeforeSecondCall = pool.statistics.cacheHits;
 
-      // Same primary — the entry is already assigned.
+      // Use resumeLastState to force re-reconciliation with the same
+      // input (bypasses threshold deduplication).
+      pool.resumeLastState();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(pool.statistics.cacheHits, greaterThan(hitsBeforeSecondCall));
+
+      pool.dispose();
+    });
+
+    test('skips reconciliation when threshold state unchanged', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
+      );
+
       pool.onVisibilityChanged(
         primaryIndex: 0,
         visibilityRatios: {0: 1.0},
       );
       await Future<void>.delayed(Duration.zero);
 
-      expect(pool.statistics.cacheHits, greaterThan(hitsBeforeSecondCall));
+      final swapsBefore = pool.statistics.swapCount;
+
+      // Same primary, same playable set — should be skipped.
+      pool.onVisibilityChanged(
+        primaryIndex: 0,
+        visibilityRatios: {0: 0.95}, // Still above 0.6 threshold
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      // No new swaps should occur — reconciliation was skipped.
+      expect(pool.statistics.swapCount, swapsBefore);
+
+      pool.dispose();
+    });
+
+    test('triggers reconciliation on threshold crossing', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
+      );
+
+      pool.onVisibilityChanged(
+        primaryIndex: 0,
+        visibilityRatios: {0: 1.0, 1: 0.3}, // index 1 below threshold
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final statsBefore = pool.statistics;
+
+      // Index 1 crosses above threshold — should trigger reconciliation.
+      pool.onVisibilityChanged(
+        primaryIndex: 0,
+        visibilityRatios: {0: 1.0, 1: 0.7}, // index 1 now above 0.6
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      // Reconciliation should have run (playable set changed: {0} → {0,1}).
+      expect(
+        pool.statistics.cacheHits + pool.statistics.cacheMisses,
+        greaterThan(statsBefore.cacheHits + statsBefore.cacheMisses),
+      );
 
       pool.dispose();
     });

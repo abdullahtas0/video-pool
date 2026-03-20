@@ -146,19 +146,42 @@ class VideoPool {
   int _lastPrimaryIndex = -1;
   Map<int, double> _lastVisibilityRatios = const {};
 
+  // --- Threshold state for deduplication ---
+  Set<int> _lastPlayableIndices = {};
+
   /// Called by the visibility tracker when viewport changes.
   ///
   /// [primaryIndex] is the most visible slot index.
   /// [visibilityRatios] maps visible slot indices to their visibility (0.0–1.0).
+  ///
+  /// Uses threshold state comparison to skip redundant reconciliations.
+  /// Only reconciles when the primary index changes or a video crosses the
+  /// [VideoPoolConfig.visibilityPlayThreshold] boundary.
   void onVisibilityChanged({
     required int primaryIndex,
     required Map<int, double> visibilityRatios,
   }) {
     if (_disposed) return;
 
-    // Track last known state for resume after background.
+    // Compute which indices are above the play threshold.
+    final currentPlayable = <int>{};
+    for (final entry in visibilityRatios.entries) {
+      if (entry.value >= config.visibilityPlayThreshold) {
+        currentPlayable.add(entry.key);
+      }
+    }
+
+    // Skip reconciliation if nothing meaningful changed.
+    if (primaryIndex == _lastPrimaryIndex &&
+        setEquals(_lastPlayableIndices, currentPlayable)) {
+      return;
+    }
+
+    // State changed — update tracking.
     _lastPrimaryIndex = primaryIndex;
-    _lastVisibilityRatios = Map.of(visibilityRatios);
+    _lastPlayableIndices = currentPlayable;
+    // Store reference directly — no Map.of() copy (zero GC pressure).
+    _lastVisibilityRatios = visibilityRatios;
 
     // "Latest wins" — bump version so stale reconciliations bail out early.
     _reconciliationVersion++;
@@ -391,11 +414,19 @@ class VideoPool {
   ///
   /// Useful when the app returns from background — the last playing video
   /// will be resumed without requiring a scroll event.
+  ///
+  /// Resets threshold state to force reconciliation even if the visibility
+  /// hasn't changed since the last call.
   void resumeLastState() {
     if (_disposed || _lastPrimaryIndex < 0) return;
+    final primary = _lastPrimaryIndex;
+    final ratios = _lastVisibilityRatios;
+    // Reset threshold state so onVisibilityChanged won't skip this call.
+    _lastPlayableIndices = {};
+    _lastPrimaryIndex = -1;
     onVisibilityChanged(
-      primaryIndex: _lastPrimaryIndex,
-      visibilityRatios: _lastVisibilityRatios,
+      primaryIndex: primary,
+      visibilityRatios: ratios,
     );
   }
 
@@ -535,10 +566,15 @@ class VideoPool {
 
     // Re-reconcile with the last known visibility state so that
     // recovered entries are immediately put to use.
+    // Reset threshold state to force reconciliation.
     if (_lastPrimaryIndex >= 0) {
+      final primary = _lastPrimaryIndex;
+      final ratios = _lastVisibilityRatios;
+      _lastPlayableIndices = {};
+      _lastPrimaryIndex = -1;
       onVisibilityChanged(
-        primaryIndex: _lastPrimaryIndex,
-        visibilityRatios: _lastVisibilityRatios,
+        primaryIndex: primary,
+        visibilityRatios: ratios,
       );
     }
   }

@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.2.1
+
+### Bug Fixes
+- **Fixed excessive reconciliation during scroll (BUG-1)** — `VideoPool.onVisibilityChanged()` now uses a threshold state machine that compares playable index sets (indices above `visibilityPlayThreshold`) instead of raw ratio values. Identical threshold states are skipped at near-zero cost, eliminating 17+ redundant reconciliations per scroll frame observed on Redmi Note 8 Pro
+- **Fixed `VideoListView` triggering reconciliation every frame** — Added coarse widget-level guard that skips notifications when `primaryIndex` and visible count haven't changed, reducing calls before they reach the pool
+- **Fixed `VideoFeedView` blocking mid-swipe preload** — Removed overly restrictive `primaryIndex != _currentPage` guard from `NotificationListener`; pool-level threshold filter now handles deduplication, allowing threshold crossings during page transitions to trigger timely preloads
+- **Fixed `Map.of()` copy in `onVisibilityChanged`** — Visibility ratios are now stored by reference instead of copied, eliminating per-frame Map allocation and GC pressure
+- **Fixed `resumeLastState()` being silently skipped** — Threshold state is now reset before re-emitting last visibility, ensuring reconciliation runs after app returns from background
+- **Fixed `_tryRecoverEntries()` not re-reconciling** — Same threshold reset applied to post-emergency-flush recovery path
+
+### Testing
+- 132 unit and widget tests (up from 128)
+- New tests: threshold deduplication (skip when unchanged), threshold crossing (trigger on boundary change)
+
 ## 0.2.0
 
 ### Breaking Changes
