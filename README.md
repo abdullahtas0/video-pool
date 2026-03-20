@@ -3,11 +3,11 @@
 Enterprise video orchestration for Flutter. Build TikTok, Reels, and Instagram-style video feeds with intelligent controller pooling, zero-jank scrolling, and automatic device protection.
 
 
-
+<p align="center">
+  <img src="https://raw.githubusercontent.com/abdullahtas0/video-pool/master/assets/demo.gif" alt="video_pool demo" width="280"/>
+</p>
 
 https://github.com/user-attachments/assets/3e04723e-20c4-43b1-b613-1926b4c1053c
-
-
 
 
 ## The Problem
