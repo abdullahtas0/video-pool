@@ -22,6 +22,7 @@ export 'src/core/adapter/media_kit_adapter.dart';
 // Cache
 export 'src/core/cache/bandwidth_estimator.dart';
 export 'src/core/cache/file_preload_manager.dart';
+export 'src/core/cache/thumbnail_extractor.dart';
 
 // Lifecycle
 export 'src/core/lifecycle/lifecycle_state.dart';

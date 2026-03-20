@@ -200,6 +200,25 @@ class FilePreloadManager {
     return cached.path;
   }
 
+  /// Get extracted thumbnail path for a cache key, if available.
+  ///
+  /// Returns `null` if the video is not cached or the thumbnail file
+  /// does not exist on disk.
+  String? getThumbnailPath(String cacheKey) {
+    final cached = _diskCache.get(cacheKey);
+    if (cached == null) return null;
+    final thumbPath = _thumbnailPathForKey(cacheKey);
+    // Check if thumbnail file actually exists
+    if (File(thumbPath).existsSync()) return thumbPath;
+    return null;
+  }
+
+  /// Build a deterministic thumbnail file path from a cache key.
+  String _thumbnailPathForKey(String cacheKey) {
+    final hash = sha256.convert(utf8.encode(cacheKey)).toString();
+    return '$cacheDirectory/thumb_$hash.jpg';
+  }
+
   /// Lock a cache key to prevent eviction while a player is using it.
   void lockKey(String cacheKey) => _lockedKeys.add(cacheKey);
 

@@ -32,6 +32,13 @@ class VideoPoolPlugin : FlutterPlugin, MethodCallHandler {
 
         methodChannel.setMethodCallHandler(this)
         eventChannel.setStreamHandler(deviceMonitor)
+
+        // Register thumbnail extraction channel.
+        val thumbnailChannel = MethodChannel(
+            binding.binaryMessenger,
+            "dev.video_pool/thumbnail"
+        )
+        ThumbnailExtractor.register(thumbnailChannel)
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
