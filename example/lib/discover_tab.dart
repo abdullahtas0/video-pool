@@ -8,7 +8,10 @@ import 'video_sources.dart';
 /// Uses its own [VideoPoolScope] with a smaller pool (maxConcurrent: 2)
 /// independent from the Feed tab's pool.
 class DiscoverTab extends StatelessWidget {
-  const DiscoverTab({super.key});
+  const DiscoverTab({super.key, this.decoderBudget});
+
+  /// Optional shared decoder budget for cooperative multi-pool.
+  final DecoderBudget? decoderBudget;
 
   /// Total items in the feed: alternates between text and video.
   static const _totalItems = 11;
@@ -33,6 +36,7 @@ class DiscoverTab extends StatelessWidget {
         logLevel: LogLevel.info,
       ),
       adapterFactory: (_) => MediaKitAdapter(),
+      decoderBudget: decoderBudget,
       sourceResolver: (index) {
         final videoIdx = _videoIndexForItem(index);
         return videoIdx >= 0 ? discoverVideos[videoIdx] : null;

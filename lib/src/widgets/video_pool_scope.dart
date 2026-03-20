@@ -6,6 +6,7 @@ import '../core/adapter/player_adapter.dart';
 import '../core/audio/audio_focus_manager.dart';
 import '../core/cache/file_preload_manager.dart';
 import '../core/models/video_source.dart';
+import '../core/pool/decoder_budget.dart';
 import '../core/pool/pool_config.dart';
 import '../core/pool/video_pool.dart';
 import '../platform/device_monitor.dart';
@@ -43,6 +44,7 @@ class VideoPoolScope extends StatefulWidget {
     required this.sourceResolver,
     this.platform,
     this.filePreloadManager,
+    this.decoderBudget,
     required this.child,
   });
 
@@ -61,6 +63,9 @@ class VideoPoolScope extends StatefulWidget {
 
   /// Optional disk cache manager for preloading video data.
   final FilePreloadManager? filePreloadManager;
+
+  /// Optional shared decoder budget for cooperative multi-pool.
+  final DecoderBudget? decoderBudget;
 
   /// The widget below this scope in the tree.
   final Widget child;
@@ -87,6 +92,7 @@ class _VideoPoolScopeState extends State<VideoPoolScope>
       adapterFactory: widget.adapterFactory,
       sourceResolver: widget.sourceResolver,
       filePreloadManager: widget.filePreloadManager,
+      decoderBudget: widget.decoderBudget,
     );
 
     _audioFocusManager = AudioFocusManager(platform: _platform);

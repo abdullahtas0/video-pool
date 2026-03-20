@@ -52,6 +52,9 @@ class _VideoListViewState extends State<VideoListView> {
   final VisibilityTracker _visibilityTracker = const VisibilityTracker();
   int _lastPrimaryIndex = -1;
   int _lastVisibleCount = 0;
+  double _dragStartPosition = 0.0;
+  DateTime _dragStartTime = DateTime.now();
+  bool _isDragging = false;
 
   @override
   void initState() {
@@ -120,6 +123,28 @@ class _VideoListViewState extends State<VideoListView> {
           visibilityRatios: update.visibilityRatios,
         );
       }
+    }
+
+    // Track drag for velocity estimation (prediction engine).
+    if (notification is ScrollStartNotification) {
+      _isDragging = notification.dragDetails != null;
+      _dragStartPosition = notification.metrics.pixels;
+      _dragStartTime = DateTime.now();
+    } else if (notification is ScrollEndNotification && _isDragging) {
+      final dt = DateTime.now().difference(_dragStartTime).inMilliseconds;
+      if (dt > 0) {
+        final velocity = (notification.metrics.pixels - _dragStartPosition) /
+            dt * 1000;
+        if (velocity.abs() > 0) {
+          pool.onScrollUpdate(
+            position: notification.metrics.pixels,
+            velocity: velocity,
+            itemExtent: extent,
+            itemCount: widget.itemCount,
+          );
+        }
+      }
+      _isDragging = false;
     }
 
     return false;

@@ -57,6 +57,9 @@ class _AppShell extends StatefulWidget {
 class _AppShellState extends State<_AppShell> {
   int _currentTab = 0;
 
+  // Shared decoder budget for cooperative multi-pool.
+  final GlobalDecoderBudget _decoderBudget = GlobalDecoderBudget(totalTokens: 4);
+
   // Shared pool for Feed + Insights tabs.
   VideoPool? _pool;
   FilePreloadManager? _cacheManager;
@@ -90,11 +93,13 @@ class _AppShellState extends State<_AppShell> {
         maxConcurrent: 3,
         preloadCount: 1,
         logLevel: LogLevel.debug,
+        bandwidthThresholds: BandwidthThresholds(),
       ),
       adapterFactory: (_) => MediaKitAdapter(),
       sourceResolver: (index) =>
           index >= 0 && index < feedVideos.length ? feedVideos[index] : null,
       filePreloadManager: cacheManager,
+      decoderBudget: _decoderBudget,
     );
 
     // Device monitoring.
@@ -155,7 +160,7 @@ class _AppShellState extends State<_AppShell> {
           ),
         );
       case 1:
-        return const DiscoverTab();
+        return DiscoverTab(decoderBudget: _decoderBudget);
       case 2:
         return InsightsTab(pool: _pool!);
       default:
@@ -172,6 +177,7 @@ class _AppShellState extends State<_AppShell> {
     try {
       _deviceMonitor?.stopMonitoring();
     } catch (_) {}
+    _decoderBudget.dispose();
     super.dispose();
   }
 

@@ -58,6 +58,9 @@ class _VideoFeedViewState extends State<VideoFeedView> {
   late PageController _controller;
   final VisibilityTracker _visibilityTracker = const VisibilityTracker();
   int _currentPage = 0;
+  double _lastPosition = 0.0;
+  DateTime _lastPositionTime = DateTime.now();
+  bool _isDragging = false;
 
   @override
   void initState() {
@@ -112,6 +115,32 @@ class _VideoFeedViewState extends State<VideoFeedView> {
             visibilityRatios: update.visibilityRatios,
           );
         }
+
+        // Track drag state for velocity estimation.
+        if (notification is ScrollStartNotification) {
+          _isDragging = notification.dragDetails != null;
+          _lastPosition = notification.metrics.pixels;
+          _lastPositionTime = DateTime.now();
+        } else if (notification is ScrollEndNotification && _isDragging) {
+          // Drag ended — compute velocity from position delta.
+          final now = DateTime.now();
+          final dt = now.difference(_lastPositionTime).inMilliseconds;
+          if (dt > 0) {
+            final velocity = (notification.metrics.pixels - _lastPosition) /
+                dt * 1000; // pixels/sec
+            if (velocity.abs() > 0) {
+              final pool = VideoPoolProvider.maybeOf(context);
+              pool?.onScrollUpdate(
+                position: notification.metrics.pixels,
+                velocity: velocity,
+                itemExtent: notification.metrics.viewportDimension,
+                itemCount: widget.sources.length,
+              );
+            }
+          }
+          _isDragging = false;
+        }
+
         return false;
       },
       child: PageView.builder(
