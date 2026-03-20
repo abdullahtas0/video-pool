@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:video_pool/video_pool.dart';
+import 'event_debug_overlay.dart';
 
 /// Short, real video clips that load fast on emulators and devices.
 /// These are from Cloudflare's public test streams and Google samples.
@@ -110,7 +111,9 @@ class _TikTokExampleState extends State<TikTokExample> {
         sourceResolver: (index) =>
             index >= 0 && index < _videos.length ? _videos[index] : null,
         filePreloadManager: _cacheManager,
-        child: VideoFeedView(sources: _videos),
+        child: EventDebugOverlay(
+          child: VideoFeedView(sources: _videos),
+        ),
       ),
     );
   }

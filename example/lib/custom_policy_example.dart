@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_pool/video_pool.dart';
+import 'event_debug_overlay.dart';
 
 /// An aggressive battery-saver lifecycle policy.
 ///
@@ -80,7 +81,9 @@ class CustomPolicyExample extends StatelessWidget {
         adapterFactory: (_) => MediaKitAdapter(),
         sourceResolver: (index) =>
             index >= 0 && index < _videos.length ? _videos[index] : null,
-        child: VideoFeedView(sources: _videos),
+        child: EventDebugOverlay(
+          child: VideoFeedView(sources: _videos),
+        ),
       ),
     );
   }
