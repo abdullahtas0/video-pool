@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:crypto/crypto.dart';
+
 import '../memory/lru_cache.dart';
 import '../models/video_source.dart';
 
@@ -16,6 +18,16 @@ class CachedFile {
     required this.cacheKey,
   });
 
+  /// Creates a [CachedFile] from a JSON map (for manifest deserialization).
+  factory CachedFile.fromJson(Map<String, dynamic> json) {
+    return CachedFile(
+      path: json['path'] as String,
+      sizeBytes: json['sizeBytes'] as int,
+      cachedAt: DateTime.parse(json['cachedAt'] as String),
+      cacheKey: json['cacheKey'] as String,
+    );
+  }
+
   /// Absolute path to the cached file on disk.
   final String path;
 
@@ -27,6 +39,14 @@ class CachedFile {
 
   /// The cache key associated with this entry.
   final String cacheKey;
+
+  /// Converts this to a JSON map (for manifest serialization).
+  Map<String, dynamic> toJson() => {
+        'path': path,
+        'sizeBytes': sizeBytes,
+        'cachedAt': cachedAt.toIso8601String(),
+        'cacheKey': cacheKey,
+      };
 }
 
 /// Parameters passed to the download isolate.
@@ -36,12 +56,14 @@ class _DownloadParams {
     required this.destPath,
     required this.headers,
     required this.bytesToFetch,
+    required this.connectionTimeoutSeconds,
   });
 
   final String url;
   final String destPath;
   final Map<String, String> headers;
   final int bytesToFetch;
+  final int connectionTimeoutSeconds;
 }
 
 /// Result returned from the download isolate.
@@ -78,10 +100,12 @@ class FilePreloadManager {
   /// [cacheDirectory] must be a writable directory path.
   /// [maxCacheSizeBytes] defaults to 500 MB.
   /// [maxEntries] defaults to 100 entries in the LRU index.
+  /// [connectionTimeoutSeconds] defaults to 15 seconds.
   FilePreloadManager({
     required this.cacheDirectory,
     this.maxCacheSizeBytes = 500 * 1024 * 1024,
     int maxEntries = 100,
+    this.connectionTimeoutSeconds = 15,
   }) : _diskCache = LruCache<String, CachedFile>(
           maxSize: maxEntries,
         );
@@ -92,11 +116,17 @@ class FilePreloadManager {
   /// Maximum total size of all cached files in bytes. Default: 500 MB.
   final int maxCacheSizeBytes;
 
+  /// HTTP connection timeout in seconds.
+  final int connectionTimeoutSeconds;
+
   /// In-memory LRU index of cached files.
   final LruCache<String, CachedFile> _diskCache;
 
   /// Ongoing prefetch operations keyed by cache key.
   final Map<String, Completer<String?>> _activeFetches = {};
+
+  /// Keys that are currently in use by a player and must not be evicted.
+  final Set<String> _lockedKeys = {};
 
   /// Track total size of cached data on disk.
   int _currentCacheSizeBytes = 0;
@@ -111,6 +141,41 @@ class FilePreloadManager {
 
   /// Returns the local file path for a cached entry, or `null`.
   String? getCachedPath(String cacheKey) => _diskCache.get(cacheKey)?.path;
+
+  /// Lock a cache key to prevent eviction while a player is using it.
+  void lockKey(String cacheKey) => _lockedKeys.add(cacheKey);
+
+  /// Unlock a cache key, allowing it to be evicted if needed.
+  void unlockKey(String cacheKey) => _lockedKeys.remove(cacheKey);
+
+  /// Whether the given [cacheKey] is currently locked.
+  bool isLocked(String cacheKey) => _lockedKeys.contains(cacheKey);
+
+  /// Load the cache manifest from disk (cold-start recovery).
+  ///
+  /// Call this once after construction to recover cache state from a
+  /// previous session. Entries whose files no longer exist on disk
+  /// are silently skipped.
+  Future<void> loadManifest() async {
+    final manifestFile = File('$cacheDirectory/_manifest.json');
+    if (!await manifestFile.exists()) return;
+
+    try {
+      final content = await manifestFile.readAsString();
+      final List<dynamic> entries = json.decode(content) as List<dynamic>;
+
+      for (final entry in entries) {
+        final cached = CachedFile.fromJson(entry as Map<String, dynamic>);
+        // Only restore entries whose files still exist on disk.
+        if (await File(cached.path).exists()) {
+          _diskCache.put(cached.cacheKey, cached);
+          _currentCacheSizeBytes += cached.sizeBytes;
+        }
+      }
+    } catch (_) {
+      // Manifest is corrupt or unreadable — start fresh.
+    }
+  }
 
   /// Pre-fetch the first [bytesToFetch] bytes of [source] to disk.
   ///
@@ -154,6 +219,7 @@ class FilePreloadManager {
             destPath: destPath,
             headers: source.headers,
             bytesToFetch: bytesToFetch,
+            connectionTimeoutSeconds: connectionTimeoutSeconds,
           ),
         ),
       );
@@ -164,6 +230,8 @@ class FilePreloadManager {
       }
 
       if (result.error != null) {
+        // Clean up partial file on error.
+        await _deleteFile(result.path);
         if (!completer.isCompleted) completer.complete(null);
         return null;
       }
@@ -177,6 +245,9 @@ class FilePreloadManager {
 
       _diskCache.put(key, cached);
       _currentCacheSizeBytes += result.sizeBytes;
+
+      // Persist manifest for cold-start recovery.
+      await _saveManifest();
 
       if (!completer.isCompleted) completer.complete(result.path);
       return result.path;
@@ -209,17 +280,32 @@ class FilePreloadManager {
     }
 
     _diskCache.clear();
+    _lockedKeys.clear();
     _currentCacheSizeBytes = 0;
+
+    await _deleteFile('$cacheDirectory/_manifest.json');
   }
 
   /// Evict the least-recently-used entries until there is room for
   /// [additionalBytes] without exceeding [maxCacheSizeBytes].
+  ///
+  /// Locked keys are skipped to prevent eviction of files in active use.
   Future<void> _evictIfNeeded(int additionalBytes) async {
     while (_currentCacheSizeBytes + additionalBytes > maxCacheSizeBytes &&
         _diskCache.length > 0) {
-      // LRU: the first key is the least recently used.
-      final oldestKey = _diskCache.keys.first;
-      final oldest = _diskCache.remove(oldestKey);
+      // Find the oldest unlocked key.
+      String? oldestUnlockedKey;
+      for (final key in _diskCache.keys) {
+        if (!_lockedKeys.contains(key)) {
+          oldestUnlockedKey = key;
+          break;
+        }
+      }
+
+      // All entries are locked — cannot evict.
+      if (oldestUnlockedKey == null) break;
+
+      final oldest = _diskCache.remove(oldestUnlockedKey);
       if (oldest != null) {
         _currentCacheSizeBytes -= oldest.sizeBytes;
         await _deleteFile(oldest.path);
@@ -237,22 +323,30 @@ class FilePreloadManager {
       }
     }
     _activeFetches.clear();
+    _lockedKeys.clear();
   }
 
   // ──────────────────────────── Helpers ──────────────────────────────────
 
   /// Build a deterministic file path from a cache key.
   ///
-  /// Uses a stable SHA-256 hash (not Dart's `String.hashCode`) so that
-  /// the same cache key always maps to the same filename across VM restarts.
+  /// Uses SHA-256 hash for collision-resistant, filesystem-safe filenames.
   String _filePathForKey(String key) {
-    final bytes = utf8.encode(key);
-    // SHA-256 via a simple FNV-1a-like stable hash (no crypto dependency).
-    // We use base64url for filesystem-safe encoding.
-    final encoded = base64Url.encode(bytes);
-    // Truncate to avoid overly long file names, keep enough for uniqueness.
-    final safeName = encoded.length > 64 ? encoded.substring(0, 64) : encoded;
-    return '$cacheDirectory/vp_$safeName.tmp';
+    final hash = sha256.convert(utf8.encode(key)).toString();
+    return '$cacheDirectory/vp_$hash.tmp';
+  }
+
+  /// Persist the cache manifest to disk for cold-start recovery.
+  Future<void> _saveManifest() async {
+    try {
+      final entries = _diskCache.entries
+          .map((e) => e.value.toJson())
+          .toList();
+      final manifestFile = File('$cacheDirectory/_manifest.json');
+      await manifestFile.writeAsString(json.encode(entries));
+    } catch (_) {
+      // Best-effort persistence.
+    }
   }
 
   /// Delete a file at [path] if it exists. Errors are silently ignored.
@@ -270,11 +364,14 @@ class FilePreloadManager {
   /// Top-level / static function that runs inside an isolate.
   ///
   /// Downloads up to [params.bytesToFetch] bytes from [params.url] and writes
-  /// them to [params.destPath].
+  /// them to [params.destPath]. Validates HTTP status codes and enforces
+  /// connection timeout.
   static Future<_DownloadResult> _downloadInIsolate(
     _DownloadParams params,
   ) async {
-    final client = HttpClient();
+    final client = HttpClient()
+      ..connectionTimeout = Duration(seconds: params.connectionTimeoutSeconds);
+    IOSink? sink;
     try {
       final request = await client.getUrl(Uri.parse(params.url));
       for (final entry in params.headers.entries) {
@@ -285,21 +382,56 @@ class FilePreloadManager {
 
       final response = await request.close();
 
+      // Only accept 200 (OK) or 206 (Partial Content).
+      if (response.statusCode != 200 && response.statusCode != 206) {
+        // Drain the response to free resources.
+        await response.drain<void>();
+        return _DownloadResult(
+          path: params.destPath,
+          sizeBytes: 0,
+          error: 'HTTP ${response.statusCode}',
+        );
+      }
+
       final file = File(params.destPath);
-      final sink = file.openWrite();
+      final fileSink = file.openWrite();
+      sink = fileSink;
       var totalBytes = 0;
 
       await for (final chunk in response) {
-        sink.add(chunk);
+        try {
+          fileSink.add(chunk);
+        } catch (e) {
+          // Disk write error — delete partial file.
+          await fileSink.close().catchError((_) => fileSink);
+          sink = null;
+          try { await file.delete(); } catch (_) {}
+          return _DownloadResult(
+            path: params.destPath,
+            sizeBytes: 0,
+            error: 'Disk write error: $e',
+          );
+        }
         totalBytes += chunk.length;
         if (totalBytes >= params.bytesToFetch) break;
       }
 
-      await sink.flush();
-      await sink.close();
+      await fileSink.flush();
+      await fileSink.close();
+      sink = null;
 
       return _DownloadResult(path: params.destPath, sizeBytes: totalBytes);
     } catch (e) {
+      // Clean up partial file on error.
+      try {
+        if (sink != null) {
+          await sink.close().catchError((_) => sink);
+        }
+        final partialFile = File(params.destPath);
+        if (await partialFile.exists()) {
+          await partialFile.delete();
+        }
+      } catch (_) {}
       return _DownloadResult(path: params.destPath, sizeBytes: 0, error: '$e');
     } finally {
       client.close();

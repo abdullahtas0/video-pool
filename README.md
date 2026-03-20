@@ -40,7 +40,7 @@ VideoPoolScope(
 | **Thermal Throttling** | Native iOS/Android monitoring auto-reduces concurrency when device overheats. |
 | **Memory Pressure** | Responds to `onTrimMemory(RUNNING_CRITICAL)` with emergency flush to 1 player. |
 | **Disk Pre-fetching** | 500MB LRU cache downloads first 2MB of upcoming videos in isolate. Instant playback on scroll-back. |
-| **Audio Focus** | System audio session management. Auto-pause on background, phone call, other media app. |
+| **Audio Focus** | System audio session management. Auto-pause on background, phone call, Spotify, other media app. Responds to iOS interruptions and Android focus changes. |
 | **Ready-to-use Widgets** | `VideoFeedView` (TikTok), `VideoListView` (Instagram), `VideoCard` — all wiring handled. |
 | **Custom Policies** | Pluggable `LifecyclePolicy` for battery-saver, data-saver, or custom behaviors. |
 | **Debug Logging** | Configurable `LogLevel` shows pool state, swaps, thermal events in dev console. |
@@ -51,7 +51,7 @@ VideoPoolScope(
 
 ```yaml
 dependencies:
-  video_pool: ^0.1.1
+  video_pool: ^0.2.0
   media_kit: ^1.1.11
   media_kit_video: ^1.2.5
   media_kit_libs_video: ^1.0.5
@@ -200,6 +200,7 @@ const VideoSource(
   headers: {'Authorization': 'Bearer token'},
   thumbnailUrl: 'https://example.com/thumb.jpg',
   cacheKey: 'custom-key',  // defaults to url
+  resolutionHint: ResolutionHint.hd1080,  // for memory estimation
 )
 ```
 
@@ -257,6 +258,7 @@ The pool dynamically adapts to device conditions:
 | Memory warning | Budget reduced to 70% |
 | Memory critical | Budget reduced to 40% |
 | Memory terminal (`TRIM_MEMORY_RUNNING_CRITICAL`) | **Emergency flush** — all non-playing players instantly disposed |
+| Memory recovery (terminal → normal) | Pool auto-recovers to `maxConcurrent` entries and re-reconciles |
 
 ## Platform Setup
 
@@ -282,13 +284,15 @@ This package uses [media_kit](https://pub.dev/packages/media_kit) for video play
 | [media_kit_video](https://pub.dev/packages/media_kit_video) | Video rendering widget |
 | [media_kit_libs_video](https://pub.dev/packages/media_kit_libs_video) | Native video codec libraries |
 
-No other dependencies. Disk cache uses `dart:io` + `Isolate`. Audio focus uses platform channels. State management uses `InheritedWidget` + `ValueNotifier` — no Provider/Riverpod required.
+| [crypto](https://pub.dev/packages/crypto) | SHA-256 hashing for disk cache filenames |
+
+Disk cache uses `dart:io` + `Isolate`. Audio focus uses platform channels. State management uses `InheritedWidget` + `ValueNotifier` — no Provider/Riverpod required.
 
 ## Example App
 
 See the [`example/`](example/) directory for three runnable demos:
 
-- **TikTok Feed** — Full-screen vertical video feed with preloading
+- **TikTok Feed** — Full-screen vertical video feed with disk caching
 - **Instagram Feed** — Mixed content list with video cards and text posts
 - **Custom Policy** — Battery-saver lifecycle policy with debug logging
 

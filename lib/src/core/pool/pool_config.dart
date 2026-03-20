@@ -46,7 +46,13 @@ class VideoPoolConfig {
     this.lifecyclePolicy,
     this.logLevel = LogLevel.none,
   })  : assert(maxConcurrent > 0, 'maxConcurrent must be positive'),
+        assert(maxConcurrent <= 10, 'maxConcurrent must not exceed 10'),
         assert(preloadCount >= 0, 'preloadCount must be non-negative'),
+        assert(
+          preloadCount < maxConcurrent,
+          'preloadCount must be less than maxConcurrent '
+              '(at least 1 slot is needed for the primary player)',
+        ),
         assert(memoryBudgetBytes > 0, 'memoryBudgetBytes must be positive'),
         assert(
           visibilityPlayThreshold > visibilityPauseThreshold,

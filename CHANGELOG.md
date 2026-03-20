@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.2.0
+
+### Breaking Changes
+- `VideoPoolConfig` now asserts `maxConcurrent <= 10` and `preloadCount < maxConcurrent` (debug mode only; production builds unaffected)
+
+### Bug Fixes
+- **Fixed race condition between device events and reconciliation** — Emergency flush now serializes through the `_activeReconciliation` Future chain, preventing disposed-adapter exceptions during concurrent reconciliation
+- **Fixed emergency flush with no recovery** — Pool now recreates adapters when memory pressure drops from terminal/critical to normal/warning, re-reconciling with the last known visibility state
+- **Fixed FilePreloadManager cache key collision** — Replaced truncated base64 encoding with SHA-256 hash for deterministic, collision-resistant filenames
+- **Fixed FilePreloadManager missing HTTP timeout** — Added configurable `connectionTimeoutSeconds` (default: 15s) to prevent hanging downloads
+- **Fixed FilePreloadManager missing HTTP status code check** — Only 200/206 responses are accepted; other status codes return an error and clean up partial files
+- **Fixed FilePreloadManager evicting files in active use** — Added `lockKey()`/`unlockKey()` API; locked keys are skipped during LRU eviction
+- **Fixed FilePreloadManager orphaning partial files on error** — Disk write errors and HTTP failures now delete incomplete files
+- **Fixed Android thermal monitoring gap on API 21-28** — Added battery temperature proxy fallback when `PowerManager.currentThermalStatus` is unavailable
+- **Fixed audio focus not responding to system interruptions** — Android `OnAudioFocusChangeListener` and iOS `AVAudioSession.interruptionNotification` now send events to Dart; `AudioFocusManager` pauses/resumes playback accordingly
+- **Fixed iOS audio resumption after interruption** — Only resumes when system sets `shouldResume` flag, preventing unwanted playback after phone calls
+- **Fixed `AudioFocusManager` subscription leak** — Audio focus stream subscription is now cancelled on dispose
+- **Fixed `VideoPoolScope.dispose()` async issue** — Async cleanup is now fire-and-forget with error catching, compatible with Flutter's synchronous `State.dispose()`
+- **Fixed `swapSource()` documentation** — Updated to accurately describe player wrapper and texture surface reuse (decoder may be re-initialized)
+
+### New Features
+- **Disk cache integration** — `VideoPool` now accepts an optional `FilePreloadManager`; cache hits serve local files, misses trigger fire-and-forget prefetch
+- **Cold-start manifest** — `FilePreloadManager.loadManifest()` recovers cached files from a previous session via `_manifest.json` sidecar file
+- **`ResolutionHint` enum** — `VideoSource.resolutionHint` enables resolution-aware memory estimation (720p ~12MB, 1080p ~24MB, 4K ~96MB)
+- **`audioFocusStream`** — New stream on `VideoPoolPlatform` for system audio focus change events (default: empty stream for backward compatibility)
+- **Runtime config safety** — `maxConcurrent` is clamped to `[1, 10]` at runtime as a safety net beyond assert-level validation
+
+### Example App
+- TikTok example now demonstrates `FilePreloadManager` with disk caching and `ResolutionHint`
+- Added `path_provider` dependency for cache directory resolution
+
+### Testing
+- 128 unit and widget tests (up from 96)
+- New test suites: race condition/recovery, FilePreloadManager enhancements, audio focus handling, VideoSource resolution hints
+
 ## 0.1.2
 
 ### Improvements

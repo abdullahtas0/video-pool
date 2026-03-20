@@ -12,8 +12,8 @@ import 'player_state.dart';
 ///
 /// Wraps [Player] and [media_kit_video.VideoController] to provide the
 /// pool-friendly adapter interface. The key capability is [swapSource],
-/// which replaces the loaded media **without** tearing down the decoder
-/// pipeline — enabling fast instance reuse during feed scrolling.
+/// which replaces the loaded media while preserving the player wrapper and
+/// texture surface — enabling fast instance reuse during feed scrolling.
 ///
 /// To facilitate testing, the [Player] can be injected via the constructor.
 class MediaKitAdapter implements PlayerAdapter {

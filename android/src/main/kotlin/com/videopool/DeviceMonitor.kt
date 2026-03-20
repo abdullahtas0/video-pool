@@ -15,6 +15,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import io.flutter.plugin.common.EventChannel
+import io.flutter.plugin.common.MethodChannel
 
 /// Monitors device thermal state, memory pressure, battery level, and
 /// low-power mode on Android. Streams periodic updates to Dart via an
@@ -122,6 +123,7 @@ class DeviceMonitor(val context: Context) : EventChannel.StreamHandler, Componen
 
     /// Returns thermal level index: 0=nominal, 1=fair, 2=serious, 3=critical.
     /// PowerManager thermal status is available on API 29+.
+    /// On API 21-28, uses battery temperature as a proxy.
     private fun getThermalLevel(): Int {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
@@ -136,7 +138,24 @@ class DeviceMonitor(val context: Context) : EventChannel.StreamHandler, Componen
                 else -> 0
             }
         }
-        return 0 // Default to nominal on older APIs
+        return getThermalLevelFromBattery()
+    }
+
+    /// Fallback thermal estimation for API 21-28 using battery temperature.
+    /// Battery temperature is reported in tenths of a degree Celsius.
+    /// Thresholds are conservative estimates; actual throttling points vary
+    /// by device form factor and OEM thermal design.
+    private fun getThermalLevelFromBattery(): Int {
+        val intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val temp = intent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1) ?: -1
+        if (temp < 0) return 0
+        val celsius = temp / 10.0
+        return when {
+            celsius >= 45.0 -> 3  // critical
+            celsius >= 42.0 -> 2  // serious
+            celsius >= 38.0 -> 1  // fair
+            else -> 0             // nominal
+        }
     }
 
     // MARK: - Memory
@@ -174,6 +193,23 @@ class DeviceMonitor(val context: Context) : EventChannel.StreamHandler, Componen
 
     // MARK: - Audio Focus
 
+    /// MethodChannel set by the plugin for sending audio focus events to Dart.
+    var methodChannel: MethodChannel? = null
+
+    private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        val event = when (focusChange) {
+            AudioManager.AUDIOFOCUS_LOSS,
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> "lost"
+            AudioManager.AUDIOFOCUS_GAIN -> "gained"
+            else -> null
+        }
+        if (event != null) {
+            handler.post {
+                methodChannel?.invokeMethod("onAudioFocusChange", mapOf("status" to event))
+            }
+        }
+    }
+
     fun requestAudioFocus(): Boolean {
         val audioManager =
             context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return false
@@ -186,7 +222,7 @@ class DeviceMonitor(val context: Context) : EventChannel.StreamHandler, Componen
 
             val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
                 .setAudioAttributes(attributes)
-                .setOnAudioFocusChangeListener { /* handle focus change */ }
+                .setOnAudioFocusChangeListener(audioFocusChangeListener, handler)
                 .build()
 
             audioFocusRequest = request
@@ -195,7 +231,7 @@ class DeviceMonitor(val context: Context) : EventChannel.StreamHandler, Componen
         } else {
             @Suppress("DEPRECATION")
             val result = audioManager.requestAudioFocus(
-                { /* handle focus change */ },
+                audioFocusChangeListener,
                 AudioManager.STREAM_MUSIC,
                 AudioManager.AUDIOFOCUS_GAIN
             )
@@ -212,7 +248,7 @@ class DeviceMonitor(val context: Context) : EventChannel.StreamHandler, Componen
             audioFocusRequest = null
         } else {
             @Suppress("DEPRECATION")
-            audioManager.abandonAudioFocus(null)
+            audioManager.abandonAudioFocus(audioFocusChangeListener)
         }
     }
 }

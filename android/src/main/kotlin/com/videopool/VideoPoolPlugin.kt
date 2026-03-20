@@ -26,7 +26,9 @@ class VideoPoolPlugin : FlutterPlugin, MethodCallHandler {
             "dev.video_pool/device_status"
         )
 
-        deviceMonitor = DeviceMonitor(binding.applicationContext)
+        deviceMonitor = DeviceMonitor(binding.applicationContext).also {
+            it.methodChannel = methodChannel
+        }
 
         methodChannel.setMethodCallHandler(this)
         eventChannel.setStreamHandler(deviceMonitor)

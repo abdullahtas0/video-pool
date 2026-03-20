@@ -36,4 +36,10 @@ abstract class VideoPoolPlatform {
 
   /// Releases system audio focus previously acquired via [requestAudioFocus].
   Future<void> releaseAudioFocus();
+
+  /// Stream of audio focus changes from the system.
+  ///
+  /// Emits `true` when audio focus is gained, `false` when lost.
+  /// Default implementation returns an empty stream.
+  Stream<bool> get audioFocusStream => const Stream.empty();
 }

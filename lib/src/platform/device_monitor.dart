@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 
 import 'device_capabilities.dart';
@@ -11,7 +13,9 @@ import 'platform_interface.dart';
 /// the native layer.
 class DeviceMonitor implements VideoPoolPlatform {
   /// Creates a [DeviceMonitor] with the default platform channels.
-  DeviceMonitor();
+  DeviceMonitor() {
+    _methodChannel.setMethodCallHandler(_handleMethodCall);
+  }
 
   /// Method channel for one-shot calls to the native layer.
   static const MethodChannel _methodChannel =
@@ -23,6 +27,10 @@ class DeviceMonitor implements VideoPoolPlatform {
 
   /// Cached broadcast stream from the event channel.
   Stream<DeviceStatus>? _statusStream;
+
+  /// Controller for audio focus change events from native side.
+  final StreamController<bool> _audioFocusController =
+      StreamController<bool>.broadcast();
 
   @override
   Future<DeviceCapabilities> getCapabilities() async {
@@ -71,5 +79,20 @@ class DeviceMonitor implements VideoPoolPlatform {
   @override
   Future<void> releaseAudioFocus() async {
     await _methodChannel.invokeMethod<void>('releaseAudioFocus');
+  }
+
+  @override
+  Stream<bool> get audioFocusStream => _audioFocusController.stream;
+
+  /// Handles method calls from the native side (e.g. audio focus changes).
+  Future<dynamic> _handleMethodCall(MethodCall call) async {
+    switch (call.method) {
+      case 'onAudioFocusChange':
+        final args = Map<String, dynamic>.from(call.arguments as Map);
+        final status = args['status'] as String;
+        _audioFocusController.add(status == 'gained');
+      default:
+        break;
+    }
   }
 }

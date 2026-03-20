@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 
 import '../../platform/platform_interface.dart';
@@ -28,6 +30,9 @@ class AudioFocusManager with WidgetsBindingObserver {
   /// Callback invoked when the manager decides playback should resume
   /// (e.g. app foregrounded after being backgrounded while playing).
   VoidCallback? _onShouldResume;
+
+  /// Subscription to the platform audio focus stream.
+  StreamSubscription<bool>? _audioFocusSubscription;
 
   /// Whether this manager has been disposed.
   bool _disposed = false;
@@ -62,12 +67,22 @@ class AudioFocusManager with WidgetsBindingObserver {
     _onShouldResume = onResume;
   }
 
-  /// Start observing app lifecycle changes.
+  /// Start observing app lifecycle changes and audio focus events.
   ///
   /// Call this once after construction. The manager will register itself
-  /// as a [WidgetsBindingObserver].
+  /// as a [WidgetsBindingObserver] and listen to platform audio focus changes.
   void startObserving() {
     WidgetsBinding.instance.addObserver(this);
+
+    // Listen to system audio focus changes (e.g. phone call, other app).
+    _audioFocusSubscription = _platform.audioFocusStream.listen((gained) {
+      if (_disposed) return;
+      if (gained) {
+        _onShouldResume?.call();
+      } else {
+        _onShouldPause?.call();
+      }
+    });
   }
 
   /// Called when the app lifecycle state changes.
@@ -107,6 +122,8 @@ class AudioFocusManager with WidgetsBindingObserver {
     if (_disposed) return;
     _disposed = true;
     WidgetsBinding.instance.removeObserver(this);
+    await _audioFocusSubscription?.cancel();
+    _audioFocusSubscription = null;
     await releaseFocus();
     _onShouldPause = null;
     _onShouldResume = null;

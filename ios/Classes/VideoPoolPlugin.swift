@@ -4,6 +4,8 @@ import AVFoundation
 
 public class VideoPoolPlugin: NSObject, FlutterPlugin {
     private var deviceMonitor: DeviceMonitor?
+    private var methodChannel: FlutterMethodChannel?
+    private var interruptionObserver: NSObjectProtocol?
 
     public static func register(with registrar: FlutterPluginRegistrar) {
         let methodChannel = FlutterMethodChannel(
@@ -17,9 +19,43 @@ public class VideoPoolPlugin: NSObject, FlutterPlugin {
 
         let instance = VideoPoolPlugin()
         instance.deviceMonitor = DeviceMonitor()
+        instance.methodChannel = methodChannel
+        instance.setupInterruptionObserver()
 
         registrar.addMethodCallDelegate(instance, channel: methodChannel)
         eventChannel.setStreamHandler(instance.deviceMonitor)
+    }
+
+    private func setupInterruptionObserver() {
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] notification in
+            guard let userInfo = notification.userInfo,
+                  let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
+                return
+            }
+            switch type {
+            case .began:
+                self?.methodChannel?.invokeMethod("onAudioFocusChange", arguments: ["status": "lost"])
+            case .ended:
+                // Only resume if the system indicates it is appropriate.
+                let options = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+                if AVAudioSession.InterruptionOptions(rawValue: options).contains(.shouldResume) {
+                    self?.methodChannel?.invokeMethod("onAudioFocusChange", arguments: ["status": "gained"])
+                }
+            @unknown default:
+                break
+            }
+        }
+    }
+
+    deinit {
+        if let observer = interruptionObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {

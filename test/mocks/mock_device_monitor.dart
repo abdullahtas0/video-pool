@@ -21,6 +21,10 @@ class MockDeviceMonitor implements VideoPoolPlatform {
   final StreamController<DeviceStatus> statusController =
       StreamController<DeviceStatus>.broadcast();
 
+  /// Controller backing the [audioFocusStream].
+  final StreamController<bool> audioFocusController =
+      StreamController<bool>.broadcast();
+
   /// Creates a [MockDeviceMonitor] with sensible defaults.
   MockDeviceMonitor({
     this.capabilities = const DeviceCapabilities(
@@ -59,6 +63,14 @@ class MockDeviceMonitor implements VideoPoolPlatform {
   @override
   Future<void> releaseAudioFocus() async {}
 
+  @override
+  Stream<bool> get audioFocusStream => audioFocusController.stream;
+
+  /// Emits an audio focus change event to listeners.
+  void emitAudioFocusChange(bool gained) {
+    audioFocusController.add(gained);
+  }
+
   /// Emits a status update to listeners.
   void emitStatus(DeviceStatus status) {
     statusController.add(status);
@@ -83,8 +95,9 @@ class MockDeviceMonitor implements VideoPoolPlatform {
     ));
   }
 
-  /// Disposes the status controller.
+  /// Disposes the controllers.
   void dispose() {
     statusController.close();
+    audioFocusController.close();
   }
 }

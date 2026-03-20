@@ -12,11 +12,13 @@ import 'player_state.dart';
 /// **without** destroying the underlying decoder pipeline. This enables
 /// instance reuse — the core optimization of the video pool.
 abstract class PlayerAdapter {
-  /// Swap media source without destroying the decoder pipeline.
+  /// Swap media source while reusing the player wrapper and texture surface.
   ///
-  /// This is the **key method** for instance reuse. The player keeps its
-  /// allocated decoder, texture, and render surface, and simply points
-  /// them at a new URL. Much faster than dispose + create.
+  /// This is the **key method** for instance reuse. The player wrapper and
+  /// its associated texture surface are preserved, avoiding the cost of
+  /// creating a new native player instance. The underlying decoder may be
+  /// re-initialized depending on the player implementation, but the Flutter
+  /// widget tree and texture registration remain stable.
   Future<void> swapSource(VideoSource source);
 
   /// Prepare for playback — buffer the first frame so it's ready instantly.

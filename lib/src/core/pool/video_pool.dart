@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../adapter/player_adapter.dart';
+import '../cache/file_preload_manager.dart';
 import '../lifecycle/lifecycle_orchestrator.dart';
 import '../lifecycle/lifecycle_policy.dart';
 import '../lifecycle/lifecycle_state.dart';
@@ -42,11 +43,17 @@ class VideoPool {
   ///
   /// [sourceResolver] maps a video index to its [VideoSource]. Called during
   /// reconciliation to get the source for preloading/playing.
+  ///
+  /// [filePreloadManager] enables disk caching. When provided, the pool
+  /// checks the cache before network requests and prefetches adjacent videos.
   VideoPool({
     required this.config,
     required PlayerAdapter Function(int id) adapterFactory,
     required VideoSourceResolver sourceResolver,
-  })  : _sourceResolver = sourceResolver,
+    FilePreloadManager? filePreloadManager,
+  })  : _adapterFactory = adapterFactory,
+        _sourceResolver = sourceResolver,
+        _filePreloadManager = filePreloadManager,
         _logger = VideoPoolLogger(level: config.logLevel),
         _orchestrator = LifecycleOrchestrator(
           policy: config.lifecyclePolicy ?? const DefaultLifecyclePolicy(),
@@ -57,9 +64,11 @@ class VideoPool {
           logger: VideoPoolLogger(level: config.logLevel),
         ) {
     // Create the initial pool of player instances.
-    for (var i = 0; i < config.maxConcurrent; i++) {
+    // Runtime clamp as a safety net beyond assert-level validation.
+    final effectiveMaxConcurrent = config.maxConcurrent.clamp(1, 10);
+    for (var i = 0; i < effectiveMaxConcurrent; i++) {
       final adapter = adapterFactory(i);
-      final entry = PoolEntry(id: i, adapter: adapter);
+      final entry = PoolEntry(id: _nextEntryId++, adapter: adapter);
       _entries.add(entry);
       _memoryManager.track(entry);
       _totalCreated++;
@@ -73,6 +82,15 @@ class VideoPool {
 
   /// Pool configuration.
   final VideoPoolConfig config;
+
+  /// Factory for creating new adapters (used for recovery after emergency flush).
+  final PlayerAdapter Function(int id) _adapterFactory;
+
+  /// Optional disk cache manager for preloading video data.
+  final FilePreloadManager? _filePreloadManager;
+
+  /// Next entry ID (monotonically increasing, never reused).
+  int _nextEntryId = 0;
 
   /// Elapsed time since pool creation.
   ///
@@ -304,6 +322,12 @@ class VideoPool {
   /// The adapter is NOT disposed — it remains available for reuse.
   Future<void> _releaseEntry(PoolEntry entry) async {
     _logger.debug('Releasing entry ${entry.id} from index ${entry.assignedIndex}');
+
+    // Unlock cache key before releasing.
+    if (_filePreloadManager != null && entry.currentSource != null) {
+      _filePreloadManager.unlockKey(entry.currentSource!.cacheKey);
+    }
+
     try {
       // Set volume to 0 first to prevent audio bleed during async pause.
       await entry.adapter.setVolume(0);
@@ -315,18 +339,46 @@ class VideoPool {
   }
 
   /// Assign an idle entry to a new video index via [swapSource].
+  ///
+  /// If a [FilePreloadManager] is configured, checks the disk cache first
+  /// and uses the local file path instead of the network URL.
   Future<void> _assignEntry(
     PoolEntry entry,
     int index,
     VideoSource source,
   ) async {
     _logger.debug('Assigning entry ${entry.id} to index $index');
+
+    // Check disk cache for a local copy.
+    var effectiveSource = source;
+    if (_filePreloadManager != null) {
+      final cachedPath = _filePreloadManager.getCachedPath(source.cacheKey);
+      if (cachedPath != null) {
+        effectiveSource = source.copyWith(
+          url: cachedPath,
+          type: VideoSourceType.file,
+        );
+        _filePreloadManager.lockKey(source.cacheKey);
+        _logger.debug('Cache hit for index $index: $cachedPath');
+      } else {
+        // Fire-and-forget prefetch for future use.
+        _filePreloadManager.prefetch(source);
+      }
+    }
+
+    // Store the original source (not effectiveSource) so that
+    // entry.currentSource.cacheKey always matches the logical cache key
+    // for lock/unlock operations. The player receives effectiveSource
+    // which may point to a local file path.
     entry.assignTo(index, source);
     try {
-      await entry.adapter.swapSource(source);
+      await entry.adapter.swapSource(effectiveSource);
       _swapCount++;
     } catch (e, st) {
       _logger.error('swapSource failed for entry ${entry.id}', e, st);
+      if (_filePreloadManager != null) {
+        _filePreloadManager.unlockKey(source.cacheKey);
+      }
       entry.release();
       rethrow;
     }
@@ -436,12 +488,59 @@ class VideoPool {
         _logger.warning('Ignoring terminal pressure during pool warmup');
         return;
       }
-      _emergencyFlush();
+      // Serialize emergency flush through the reconciliation chain to
+      // prevent concurrent modification of entries.
+      _activeReconciliation = (_activeReconciliation ?? Future<void>.value())
+          .then((_) {
+        if (!_disposed) return _emergencyFlush();
+      });
+    }
+
+    // When pressure drops from terminal/critical to normal/warning,
+    // attempt to recover disposed entries back to maxConcurrent.
+    if (_memoryPressure == MemoryPressureLevel.normal ||
+        _memoryPressure == MemoryPressureLevel.warning) {
+      if (_entries.length < config.maxConcurrent) {
+        _tryRecoverEntries();
+      }
     }
 
     _logger.info(
       'Device status: thermal=$thermalLevel, memory=$memoryPressure',
     );
+  }
+
+  /// Attempt to recover pool entries after emergency flush.
+  ///
+  /// Creates new adapters to fill the pool back to [config.maxConcurrent]
+  /// when memory pressure has subsided.
+  void _tryRecoverEntries() {
+    final toRecover = config.maxConcurrent - _entries.length;
+    if (toRecover <= 0) return;
+
+    _logger.info('Recovering $toRecover pool entries after pressure relief');
+
+    for (var i = 0; i < toRecover; i++) {
+      final id = _nextEntryId++;
+      final adapter = _adapterFactory(id);
+      final entry = PoolEntry(id: id, adapter: adapter);
+      _entries.add(entry);
+      _memoryManager.track(entry);
+      _totalCreated++;
+    }
+
+    _logger.info(
+      'Recovery complete. Pool now has ${_entries.length} entries',
+    );
+
+    // Re-reconcile with the last known visibility state so that
+    // recovered entries are immediately put to use.
+    if (_lastPrimaryIndex >= 0) {
+      onVisibilityChanged(
+        primaryIndex: _lastPrimaryIndex,
+        visibilityRatios: _lastVisibilityRatios,
+      );
+    }
   }
 
   /// Emergency flush — dispose all except the primary player.
@@ -511,6 +610,9 @@ class VideoPool {
 
     for (final entry in remaining) {
       try {
+        if (entry.currentSource != null) {
+          _filePreloadManager?.unlockKey(entry.currentSource!.cacheKey);
+        }
         await entry.adapter.dispose();
         entry.disposeNotifier();
         _memoryManager.untrack(entry.id);
@@ -519,6 +621,8 @@ class VideoPool {
         _logger.error('Dispose failed for entry ${entry.id}', e, st);
       }
     }
+
+    await _filePreloadManager?.dispose();
 
     _logger.info('Pool disposed');
   }

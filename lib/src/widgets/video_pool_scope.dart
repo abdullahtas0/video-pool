@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 
 import '../core/adapter/player_adapter.dart';
 import '../core/audio/audio_focus_manager.dart';
+import '../core/cache/file_preload_manager.dart';
 import '../core/models/video_source.dart';
 import '../core/pool/pool_config.dart';
 import '../core/pool/video_pool.dart';
@@ -41,6 +42,7 @@ class VideoPoolScope extends StatefulWidget {
     required this.adapterFactory,
     required this.sourceResolver,
     this.platform,
+    this.filePreloadManager,
     required this.child,
   });
 
@@ -56,6 +58,9 @@ class VideoPoolScope extends StatefulWidget {
   /// Platform interface for audio focus and device monitoring.
   /// If null, a default [DeviceMonitor] is created.
   final VideoPoolPlatform? platform;
+
+  /// Optional disk cache manager for preloading video data.
+  final FilePreloadManager? filePreloadManager;
 
   /// The widget below this scope in the tree.
   final Widget child;
@@ -81,6 +86,7 @@ class _VideoPoolScopeState extends State<VideoPoolScope>
       config: widget.config,
       adapterFactory: widget.adapterFactory,
       sourceResolver: widget.sourceResolver,
+      filePreloadManager: widget.filePreloadManager,
     );
 
     _audioFocusManager = AudioFocusManager(platform: _platform);
@@ -127,8 +133,12 @@ class _VideoPoolScopeState extends State<VideoPoolScope>
   @override
   void dispose() {
     _statusSubscription?.cancel();
-    _audioFocusManager.dispose();
-    _pool.dispose();
+
+    // Flutter's State.dispose() is synchronous, but our managers are async.
+    // Synchronously cancel subscriptions and mute entries to prevent
+    // audio bleed, then fire-and-forget the async cleanup.
+    _audioFocusManager.dispose().catchError((_) {});
+    _pool.dispose().catchError((_) {});
     try {
       _platform.stopMonitoring();
     } catch (_) {
