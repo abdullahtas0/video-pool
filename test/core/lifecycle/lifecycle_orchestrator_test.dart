@@ -260,7 +260,7 @@ void main() {
       );
 
       expect(limits.maxConcurrent, 4);
-      expect(limits.preloadCount, 0);
+      expect(limits.preloadCount, 1); // between low and medium: reduce by 1 (2->1)
     });
 
     test('bandwidth between medium and high reduces preload by 1', () {

@@ -37,8 +37,9 @@ class ThumbnailExtractor {
 
       final raf = await file.open();
       try {
-        // Read first 32 bytes to find atom headers
-        final header = await raf.read(32);
+        // Read first 4096 bytes to find atom headers (ftyp is typically 20-32 bytes,
+        // followed by optional free/skip atoms before moov or mdat)
+        final header = await raf.read(4096);
         if (header.length < 8) return false;
 
         // MP4 files start with ftyp atom, then typically moov or free

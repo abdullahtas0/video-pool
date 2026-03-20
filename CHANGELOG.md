@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.3.0
+
+### New Features
+- **Event-Sourced Observability** — All pool operations emit immutable `PoolEvent` objects via `VideoPool.eventStream`. Sealed class hierarchy with exhaustive switch support: `SwapEvent`, `ReconcileEvent`, `ThrottleEvent`, `CacheEvent`, `LifecycleEvent`, `EmergencyFlushEvent`, `ErrorEvent`, `BandwidthSampleEvent`, `PredictionEvent`, `TokenEvent`
+- **MetricsSnapshot** — Lazy-computed metrics from ring buffer: cache hit rate, avg swap latency, throttle count, bandwidth estimate, prediction accuracy. Access via `pool.metrics`
+- **Bandwidth Intelligence** — EMA-based bandwidth estimation from prefetch download durations. Network-aware preload: automatically adjusts `preloadCount` and `prefetchBytes` based on measured bandwidth. Configurable thresholds via `BandwidthThresholds` in `VideoPoolConfig`
+- **Hysteresis (Schmitt Trigger)** — Prevents flip-flopping at bandwidth threshold boundaries with configurable buffer zone
+- **Progressive Download Resume** — Interrupted prefetch downloads resume from where they left off using HTTP Range + If-Range headers. ETag validation prevents serving stale content. Max 3 retries per key
+- **Cache Janitor** — Automatically cleans up incomplete cache entries older than 24 hours on app start
+- **Predictive Scroll Engine** — Uses Flutter's deterministic scroll physics to predict where the user will stop scrolling. Confidence-based preload: high confidence triggers disk prefetch for target video. Target stabilization prevents redundant predictions
+- **Cooperative Multi-Pool** — `DecoderBudget` interface for sharing hardware decoder tokens across multiple `VideoPool` instances. `GlobalDecoderBudget` implementation with token request/release/preemption. Dynamic budget calibration on decoder init failures
+- **Auto-Thumbnail Extraction** — Extracts first-frame thumbnails from cached video files using native APIs (iOS `AVAssetImageGenerator`, Android `MediaMetadataRetriever`). FastStart (moov atom) detection. Concurrency-limited extraction queue
+
+### Example App
+- Added event debug overlay (toggle with bug icon FAB) showing live pool events with color-coded display
+
+### Testing
+- 227 unit tests (up from 132)
+
 ## 0.2.1
 
 ### Bug Fixes

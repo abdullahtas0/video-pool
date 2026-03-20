@@ -282,7 +282,7 @@ class FilePreloadManager {
       final cached = _diskCache.remove(key);
       if (cached != null) {
         await _deleteFile(cached.path);
-        _currentCacheSizeBytes -= cached.sizeBytes;
+        _currentCacheSizeBytes = (_currentCacheSizeBytes - cached.sizeBytes).clamp(0, _currentCacheSizeBytes);
       }
     }
 
@@ -336,7 +336,7 @@ class FilePreloadManager {
         } else {
           // Partial entry exists in manifest but file is gone — remove it.
           _diskCache.remove(key);
-          _currentCacheSizeBytes -= existing.sizeBytes;
+          _currentCacheSizeBytes = (_currentCacheSizeBytes - existing.sizeBytes).clamp(0, maxCacheSizeBytes);
         }
       }
 
@@ -375,7 +375,7 @@ class FilePreloadManager {
           await _deleteFile(result.path);
           final partial = _diskCache.remove(key);
           if (partial != null) {
-            _currentCacheSizeBytes -= partial.sizeBytes;
+            _currentCacheSizeBytes = (_currentCacheSizeBytes - partial.sizeBytes).clamp(0, maxCacheSizeBytes);
           }
           _retryCount.remove(key);
           await _saveManifest();
@@ -392,7 +392,7 @@ class FilePreloadManager {
             // Remove old entry size tracking before adding new.
             final oldEntry = _diskCache.remove(key);
             if (oldEntry != null) {
-              _currentCacheSizeBytes -= oldEntry.sizeBytes;
+              _currentCacheSizeBytes = (_currentCacheSizeBytes - oldEntry.sizeBytes).clamp(0, maxCacheSizeBytes);
             }
 
             final partial = CachedFile(
@@ -421,7 +421,7 @@ class FilePreloadManager {
       // Remove old partial entry size tracking if present.
       final oldEntry = _diskCache.remove(key);
       if (oldEntry != null) {
-        _currentCacheSizeBytes -= oldEntry.sizeBytes;
+        _currentCacheSizeBytes = (_currentCacheSizeBytes - oldEntry.sizeBytes).clamp(0, maxCacheSizeBytes);
       }
 
       final cached = CachedFile(
@@ -499,7 +499,7 @@ class FilePreloadManager {
 
       final oldest = _diskCache.remove(oldestUnlockedKey);
       if (oldest != null) {
-        _currentCacheSizeBytes -= oldest.sizeBytes;
+        _currentCacheSizeBytes = (_currentCacheSizeBytes - oldest.sizeBytes).clamp(0, maxCacheSizeBytes);
         await _deleteFile(oldest.path);
       }
     }

@@ -35,7 +35,7 @@ class _EventDebugOverlayState extends State<EventDebugOverlay> {
         SwapEvent e => 'SWAP #${e.entryId} -> idx ${e.toIndex} (${e.durationMs}ms${e.isWarmStart ? ", warm" : ""})',
         ReconcileEvent e => 'RECONCILE p=${e.primaryIndex} play=${e.playCount} pre=${e.preloadCount} rel=${e.releaseCount}',
         ThrottleEvent e => 'THROTTLE thermal=${e.thermalLevel.name} mem=${e.memoryPressure.name} max=${e.effectiveMaxConcurrent}',
-        CacheEvent e => 'CACHE ${e.action.name} ${e.cacheKey.substring(0, 12)}...',
+        CacheEvent e => 'CACHE ${e.action.name} ${e.cacheKey.length > 12 ? e.cacheKey.substring(0, 12) : e.cacheKey}...',
         BandwidthSampleEvent e => 'BW ${(e.estimatedBytesPerSec / 1024).toStringAsFixed(0)} KB/s',
         PredictionEvent e => 'PREDICT idx=${e.predictedIndex} conf=${e.confidence.toStringAsFixed(2)}${e.actualIndex != null ? " actual=${e.actualIndex}" : ""}',
         LifecycleEvent e => 'LIFE #${e.entryId} ${e.fromState.name}->${e.toState.name}',

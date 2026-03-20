@@ -109,16 +109,23 @@ class LifecycleOrchestrator {
 
     // Bandwidth throttling (after thermal + memory).
     // Only applies if bandwidthThresholds is configured and we have data.
+    // Uses hysteresis (Schmitt Trigger) to prevent flip-flopping at boundaries:
+    // threshold to drop is the raw value, threshold to recover is value + hysteresis%.
     final bwThresholds = config.bandwidthThresholds;
     if (bwThresholds != null && bandwidthEstimate != null) {
+      final h = 1.0 + bwThresholds.hysteresisPercent / 100.0;
       if (bandwidthEstimate < bwThresholds.lowBandwidth) {
         preloadCount = 0;
       } else if (bandwidthEstimate < bwThresholds.mediumBandwidth) {
-        preloadCount = 0;
-      } else if (bandwidthEstimate < bwThresholds.highBandwidth) {
+        // Between low and medium: reduce preload by 1
         preloadCount = (preloadCount - 1).clamp(0, preloadCount);
+      } else if (bandwidthEstimate < bwThresholds.highBandwidth) {
+        // Only restore full preload if above highBandwidth * hysteresis
+        if (bandwidthEstimate < (bwThresholds.highBandwidth * h).round()) {
+          preloadCount = (preloadCount - 1).clamp(0, preloadCount);
+        }
       }
-      // >= highBandwidth: no change (full preload)
+      // >= highBandwidth * hysteresis: no change (full preload)
     }
 
     logger.debug(
