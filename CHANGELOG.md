@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.3.1
+
+### Bug Fixes
+- **Activated predictive scroll engine in widgets** — `VideoFeedView` and `VideoListView` now forward scroll velocity to `pool.onScrollUpdate()` using drag position delta, correctly capturing fling velocity at drag end
+- **Activated bandwidth-aware preload in example** — Feed pool now configured with `BandwidthThresholds()`, enabling EMA-based network adaptation
+- **Activated cooperative multi-pool in example** — `GlobalDecoderBudget(totalTokens: 4)` shared between Feed and Discover pools
+- **Added `decoderBudget` parameter to `VideoPoolScope`** — enables cooperative multi-pool through the widget API without manual pool management
+
 ## 0.3.0
 
 ### New Features
