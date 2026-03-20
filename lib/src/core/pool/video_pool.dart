@@ -1,6 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../adapter/player_adapter.dart';
+import '../events/event_ring_buffer.dart';
+import '../events/metrics_snapshot.dart';
+import '../events/pool_event.dart';
 import '../cache/file_preload_manager.dart';
 import '../lifecycle/lifecycle_orchestrator.dart';
 import '../lifecycle/lifecycle_policy.dart';
@@ -119,6 +124,29 @@ class VideoPool {
   /// Whether the pool has been disposed.
   bool _disposed = false;
 
+  /// Ring buffer storing the last 1000 pool events for metrics computation.
+  final EventRingBuffer _eventBuffer = EventRingBuffer();
+
+  /// Broadcast stream controller for pool events.
+  final StreamController<PoolEvent> _eventController =
+      StreamController<PoolEvent>.broadcast(sync: true);
+
+  /// A broadcast stream of all pool events.
+  ///
+  /// Listeners receive events in real time. For aggregated metrics, use
+  /// the [metrics] getter instead.
+  Stream<PoolEvent> get eventStream => _eventController.stream;
+
+  /// Computes a point-in-time metrics snapshot from the event ring buffer.
+  MetricsSnapshot get metrics => MetricsSnapshot.fromBuffer(_eventBuffer);
+
+  /// Emits a pool event to both the ring buffer and the stream.
+  void _emit(PoolEvent event) {
+    if (_disposed) return;
+    _eventBuffer.add(event);
+    _eventController.add(event);
+  }
+
   /// Notifies listeners when reconciliation completes and entries change.
   ///
   /// Widgets like [VideoCard] listen to this to rebuild when a pool entry
@@ -231,6 +259,14 @@ class VideoPool {
       effectivePreloadCount: limits.preloadCount,
       currentlyActive: currentlyActive,
     );
+
+    _emit(ReconcileEvent(
+      primaryIndex: primaryIndex,
+      playCount: plan.toPlay.length,
+      preloadCount: plan.toPreload.length,
+      pauseCount: plan.toPause.length,
+      releaseCount: plan.toRelease.length,
+    ));
 
     // Step 4: Execute the plan.
 
@@ -395,10 +431,24 @@ class VideoPool {
     // which may point to a local file path.
     entry.assignTo(index, source);
     try {
+      final sw = Stopwatch()..start();
       await entry.adapter.swapSource(effectiveSource);
+      sw.stop();
       _swapCount++;
+      _emit(SwapEvent(
+        entryId: entry.id,
+        fromIndex: -1,
+        toIndex: index,
+        durationMs: sw.elapsedMilliseconds,
+        isWarmStart: effectiveSource != source,
+      ));
     } catch (e, st) {
       _logger.error('swapSource failed for entry ${entry.id}', e, st);
+      _emit(ErrorEvent(
+        code: 'SWAP_FAILED',
+        message: 'swapSource failed for entry ${entry.id}: $e',
+        fatal: false,
+      ));
       if (_filePreloadManager != null) {
         _filePreloadManager.unlockKey(source.cacheKey);
       }
@@ -507,6 +557,16 @@ class VideoPool {
     if (_disposed) return;
     _thermalLevel = thermalLevel;
     _memoryPressure = memoryPressure;
+
+    _emit(ThrottleEvent(
+      thermalLevel: thermalLevel,
+      memoryPressure: memoryPressure,
+      effectiveMaxConcurrent: _orchestrator.computeEffectiveLimits(
+        config: config,
+        thermalLevel: thermalLevel,
+        memoryPressure: memoryPressure,
+      ).maxConcurrent,
+    ));
 
     _memoryManager.scaleBudget(memoryPressure);
 
@@ -625,6 +685,11 @@ class VideoPool {
       _entries.remove(entry);
     }
 
+    _emit(EmergencyFlushEvent(
+      survivorEntryId: primary?.id,
+      disposedCount: toRemove.length,
+    ));
+
     _logger.warning(
       'Emergency flush complete. Remaining entries: ${_entries.length}',
     );
@@ -636,6 +701,7 @@ class VideoPool {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    await _eventController.close();
 
     _logger.info('Disposing pool with ${_entries.length} entries');
     reconciliationNotifier.dispose();

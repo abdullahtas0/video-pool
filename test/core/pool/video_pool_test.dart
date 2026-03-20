@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:video_pool/src/core/events/pool_event.dart';
 import 'package:video_pool/video_pool.dart';
 
 import '../../mocks/mock_player_adapter.dart';
@@ -469,6 +470,99 @@ void main() {
 
       expect(a, equals(b));
       expect(a, isNot(equals(c)));
+    });
+  });
+
+  group('VideoPool.eventStream', () {
+    test('emits ReconcileEvent on visibility change', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
+      );
+
+      final events = <PoolEvent>[];
+      pool.eventStream.listen(events.add);
+
+      pool.onVisibilityChanged(
+        primaryIndex: 0,
+        visibilityRatios: {0: 1.0},
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final reconcileEvents = events.whereType<ReconcileEvent>().toList();
+      expect(reconcileEvents, isNotEmpty);
+      expect(reconcileEvents.last.primaryIndex, 0);
+      expect(reconcileEvents.last.playCount, 1);
+
+      pool.dispose();
+    });
+
+    test('emits SwapEvent when entry is assigned', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
+      );
+
+      final events = <PoolEvent>[];
+      pool.eventStream.listen(events.add);
+
+      pool.onVisibilityChanged(
+        primaryIndex: 0,
+        visibilityRatios: {0: 1.0},
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final swapEvents = events.whereType<SwapEvent>().toList();
+      expect(swapEvents, isNotEmpty);
+      expect(swapEvents.last.toIndex, 0);
+      expect(swapEvents.last.durationMs, greaterThanOrEqualTo(0));
+
+      pool.dispose();
+    });
+
+    test('emits ThrottleEvent on device status change', () async {
+      final pool = createPool();
+
+      final events = <PoolEvent>[];
+      pool.eventStream.listen(events.add);
+
+      pool.onDeviceStatusChanged(
+        thermalLevel: ThermalLevel.serious,
+        memoryPressure: MemoryPressureLevel.normal,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final throttleEvents = events.whereType<ThrottleEvent>().toList();
+      expect(throttleEvents, hasLength(1));
+      expect(throttleEvents.first.thermalLevel, ThermalLevel.serious);
+
+      pool.dispose();
+    });
+
+    test('metrics getter returns snapshot with data', () async {
+      final pool = createPool(
+        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
+      );
+
+      pool.onVisibilityChanged(
+        primaryIndex: 0,
+        visibilityRatios: {0: 1.0},
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final m = pool.metrics;
+      expect(m.totalEvents, greaterThan(0));
+      expect(m.computedAt, greaterThan(0));
+
+      pool.dispose();
+    });
+
+    test('eventStream closes after dispose', () async {
+      final pool = createPool();
+
+      var done = false;
+      pool.eventStream.listen(null, onDone: () => done = true);
+
+      await pool.dispose();
+      expect(done, isTrue);
     });
   });
 }
