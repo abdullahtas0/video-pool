@@ -33,6 +33,8 @@ class _InsightsTabState extends State<InsightsTab> {
   int _effectiveMaxConcurrent = 3;
 
   static const _maxEvents = 50;
+  Timer? _throttleTimer;
+  bool _dirty = false;
 
   @override
   void initState() {
@@ -40,6 +42,19 @@ class _InsightsTabState extends State<InsightsTab> {
     _metrics = widget.pool.metrics;
     _stats = widget.pool.statistics;
     _sub = widget.pool.eventStream.listen(_onEvent);
+    // Throttle UI updates to max ~5 per second
+    _throttleTimer = Timer.periodic(
+      const Duration(milliseconds: 200),
+      (_) {
+        if (_dirty && mounted) {
+          _dirty = false;
+          setState(() {
+            _metrics = widget.pool.metrics;
+            _stats = widget.pool.statistics;
+          });
+        }
+      },
+    );
   }
 
   @override
@@ -55,23 +70,20 @@ class _InsightsTabState extends State<InsightsTab> {
 
   void _onEvent(PoolEvent event) {
     if (!mounted) return;
-    setState(() {
-      // Update metrics and stats on every event.
-      _metrics = widget.pool.metrics;
-      _stats = widget.pool.statistics;
 
-      // Build event record.
-      final record = _EventRecord.fromEvent(event);
-      _recentEvents.insert(0, record);
-      if (_recentEvents.length > _maxEvents) _recentEvents.removeLast();
+    // Accumulate data without setState — throttle timer handles UI updates.
+    final record = _EventRecord.fromEvent(event);
+    _recentEvents.insert(0, record);
+    if (_recentEvents.length > _maxEvents) _recentEvents.removeLast();
+    _dirty = true;
 
-      // Update tracked models.
-      switch (event) {
-        case SwapEvent(:final entryId, :final toIndex):
-          _entries[entryId] = _EntryModel(
-            entryId: entryId,
-            assignedIndex: toIndex,
-            state: 'READY',
+    // Update tracked models.
+    switch (event) {
+      case SwapEvent(:final entryId, :final toIndex):
+        _entries[entryId] = _EntryModel(
+          entryId: entryId,
+          assignedIndex: toIndex,
+          state: 'READY',
           );
         case LifecycleEvent(:final entryId, :final index, :final toState):
           _entries[entryId] = _EntryModel(
@@ -103,11 +115,11 @@ class _InsightsTabState extends State<InsightsTab> {
         case _:
           break;
       }
-    });
   }
 
   @override
   void dispose() {
+    _throttleTimer?.cancel();
     _sub?.cancel();
     super.dispose();
   }

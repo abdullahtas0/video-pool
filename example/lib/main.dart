@@ -145,12 +145,30 @@ class _AppShellState extends State<_AppShell> {
     });
   }
 
+  Widget _buildCurrentTab() {
+    switch (_currentTab) {
+      case 0:
+        return VideoPoolProvider(
+          pool: _pool!,
+          child: const EventDebugOverlay(
+            child: FeedTab(),
+          ),
+        );
+      case 1:
+        return const DiscoverTab();
+      case 2:
+        return InsightsTab(pool: _pool!);
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
   @override
   void dispose() {
     _statusSubscription?.cancel();
     _audioFocusManager?.dispose().catchError((_) {});
     _pool?.dispose().catchError((_) {});
-    _cacheManager?.dispose();
+    _cacheManager?.dispose().catchError((_) {});
     try {
       _deviceMonitor?.stopMonitoring();
     } catch (_) {}
@@ -178,28 +196,26 @@ class _AppShellState extends State<_AppShell> {
     }
 
     return Scaffold(
-      body: IndexedStack(
-        index: _currentTab,
-        children: [
-          // Tab 0: Feed
-          VideoPoolProvider(
-            pool: _pool!,
-            child: const EventDebugOverlay(
-              child: FeedTab(),
-            ),
-          ),
-
-          // Tab 1: Discover (owns its own pool via VideoPoolScope)
-          const DiscoverTab(),
-
-          // Tab 2: Insights
-          InsightsTab(pool: _pool!),
-        ],
-      ),
+      body: _buildCurrentTab(),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentTab,
         onDestinationSelected: (index) {
+          final previousTab = _currentTab;
           setState(() => _currentTab = index);
+
+          // Pause pool when leaving Feed tab, resume when returning
+          if (_pool != null) {
+            if (previousTab == 0 && index != 0) {
+              // Leaving Feed — pause all players
+              _pool!.onVisibilityChanged(
+                primaryIndex: -1,
+                visibilityRatios: const {},
+              );
+            } else if (previousTab != 0 && index == 0) {
+              // Returning to Feed — resume last state
+              _pool!.resumeLastState();
+            }
+          }
         },
         backgroundColor: const Color(0xFF0D0D1A),
         indicatorColor: const Color(0xFF7C4DFF).withValues(alpha: 0.2),
