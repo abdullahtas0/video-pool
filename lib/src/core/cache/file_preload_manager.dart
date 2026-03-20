@@ -16,15 +16,29 @@ class CachedFile {
     required this.sizeBytes,
     required this.cachedAt,
     required this.cacheKey,
-  });
+    this.complete = true,
+    this.etag,
+    int? targetBytes,
+    this.lastCheckedAt,
+  }) : targetBytes = targetBytes ?? sizeBytes;
 
   /// Creates a [CachedFile] from a JSON map (for manifest deserialization).
+  ///
+  /// Backward-compatible: old manifests without `complete`, `etag`,
+  /// `targetBytes`, or `lastCheckedAt` fields will parse with safe defaults.
   factory CachedFile.fromJson(Map<String, dynamic> json) {
+    final sizeBytes = json['sizeBytes'] as int;
     return CachedFile(
       path: json['path'] as String,
-      sizeBytes: json['sizeBytes'] as int,
+      sizeBytes: sizeBytes,
       cachedAt: DateTime.parse(json['cachedAt'] as String),
       cacheKey: json['cacheKey'] as String,
+      complete: json['complete'] as bool? ?? true,
+      etag: json['etag'] as String?,
+      targetBytes: json['targetBytes'] as int? ?? sizeBytes,
+      lastCheckedAt: json['lastCheckedAt'] != null
+          ? DateTime.parse(json['lastCheckedAt'] as String)
+          : null,
     );
   }
 
@@ -40,12 +54,30 @@ class CachedFile {
   /// The cache key associated with this entry.
   final String cacheKey;
 
+  /// Whether the download completed successfully.
+  /// `false` means the file is a partial download eligible for resume.
+  final bool complete;
+
+  /// ETag from the server response, used for resume validation via If-Range.
+  final String? etag;
+
+  /// How many bytes we intended to download (e.g. 2MB).
+  final int targetBytes;
+
+  /// When this entry was last checked/attempted for resume.
+  /// Used by janitor cleanup to remove stale incomplete entries.
+  final DateTime? lastCheckedAt;
+
   /// Converts this to a JSON map (for manifest serialization).
   Map<String, dynamic> toJson() => {
         'path': path,
         'sizeBytes': sizeBytes,
         'cachedAt': cachedAt.toIso8601String(),
         'cacheKey': cacheKey,
+        'complete': complete,
+        'etag': etag,
+        'targetBytes': targetBytes,
+        'lastCheckedAt': lastCheckedAt?.toIso8601String(),
       };
 }
 
@@ -57,6 +89,8 @@ class _DownloadParams {
     required this.headers,
     required this.bytesToFetch,
     required this.connectionTimeoutSeconds,
+    this.resumeFromByte = 0,
+    this.etag,
   });
 
   final String url;
@@ -64,6 +98,12 @@ class _DownloadParams {
   final Map<String, String> headers;
   final int bytesToFetch;
   final int connectionTimeoutSeconds;
+
+  /// Byte offset to resume from. 0 = fresh download.
+  final int resumeFromByte;
+
+  /// ETag from a previous partial download, used for If-Range validation.
+  final String? etag;
 }
 
 /// Result returned from the download isolate.
@@ -72,11 +112,15 @@ class _DownloadResult {
     required this.path,
     required this.sizeBytes,
     this.error,
+    this.etag,
   });
 
   final String path;
   final int sizeBytes;
   final String? error;
+
+  /// ETag from the server response headers, stored for future resume.
+  final String? etag;
 }
 
 /// Manages pre-fetching video data to disk so that the player can open
@@ -85,6 +129,10 @@ class _DownloadResult {
 /// Downloads run in a separate isolate to avoid blocking the UI thread.
 /// An [LruCache] tracks entries and evicts the oldest when the cache
 /// exceeds [maxCacheSizeBytes].
+///
+/// Supports progressive download resume: if a download is interrupted,
+/// the partial file is kept and subsequent attempts resume from where
+/// they left off using HTTP Range headers.
 ///
 /// Usage:
 /// ```dart
@@ -131,6 +179,9 @@ class FilePreloadManager {
   /// Track total size of cached data on disk.
   int _currentCacheSizeBytes = 0;
 
+  /// Consecutive resume failure counts per cache key.
+  final Map<String, int> _retryCount = {};
+
   bool _disposed = false;
 
   /// Current total size of cached files on disk.
@@ -139,8 +190,15 @@ class FilePreloadManager {
   /// Whether the given [cacheKey] has a completed cache entry.
   bool isCached(String cacheKey) => _diskCache.containsKey(cacheKey);
 
-  /// Returns the local file path for a cached entry, or `null`.
-  String? getCachedPath(String cacheKey) => _diskCache.get(cacheKey)?.path;
+  /// Returns the local file path for a completed cached entry, or `null`.
+  ///
+  /// Partial (incomplete) files are not returned — they are not safe for
+  /// playback and are only used internally for download resume.
+  String? getCachedPath(String cacheKey) {
+    final cached = _diskCache.get(cacheKey);
+    if (cached == null || !cached.complete) return null;
+    return cached.path;
+  }
 
   /// Lock a cache key to prevent eviction while a player is using it.
   void lockKey(String cacheKey) => _lockedKeys.add(cacheKey);
@@ -156,6 +214,8 @@ class FilePreloadManager {
   /// Call this once after construction to recover cache state from a
   /// previous session. Entries whose files no longer exist on disk
   /// are silently skipped.
+  ///
+  /// After loading, runs [cleanupIncomplete] to remove stale partial files.
   Future<void> loadManifest() async {
     final manifestFile = File('$cacheDirectory/_manifest.json');
     if (!await manifestFile.exists()) return;
@@ -175,12 +235,51 @@ class FilePreloadManager {
     } catch (_) {
       // Manifest is corrupt or unreadable — start fresh.
     }
+
+    await cleanupIncomplete();
+  }
+
+  /// Remove incomplete cache entries older than [maxAge].
+  ///
+  /// Called automatically at the end of [loadManifest], or can be called
+  /// periodically to clean up stale partial downloads.
+  Future<void> cleanupIncomplete({
+    Duration maxAge = const Duration(hours: 24),
+  }) async {
+    final now = DateTime.now();
+    final toRemove = <String>[];
+
+    for (final entry in _diskCache.entries) {
+      final cached = entry.value;
+      if (!cached.complete) {
+        final age = cached.lastCheckedAt ?? cached.cachedAt;
+        if (now.difference(age) > maxAge) {
+          toRemove.add(entry.key);
+        }
+      }
+    }
+
+    for (final key in toRemove) {
+      final cached = _diskCache.remove(key);
+      if (cached != null) {
+        await _deleteFile(cached.path);
+        _currentCacheSizeBytes -= cached.sizeBytes;
+      }
+    }
+
+    if (toRemove.isNotEmpty) await _saveManifest();
   }
 
   /// Pre-fetch the first [bytesToFetch] bytes of [source] to disk.
   ///
   /// Returns the local file path on success, or `null` on failure / cancel.
-  /// If the file is already cached, returns the cached path immediately.
+  /// If the file is already cached (and complete), returns the cached path
+  /// immediately.
+  ///
+  /// If a partial (incomplete) cached file exists, attempts to resume the
+  /// download from where it left off using HTTP Range headers. After 3
+  /// consecutive resume failures for the same key, the partial file is
+  /// deleted and `null` is returned.
   ///
   /// Multiple calls for the same cache key while a download is in-progress
   /// will share the same future (de-duplication).
@@ -192,9 +291,9 @@ class FilePreloadManager {
 
     final key = source.cacheKey;
 
-    // Already cached.
+    // Already cached and complete.
     final existing = _diskCache.get(key);
-    if (existing != null) return existing.path;
+    if (existing != null && existing.complete) return existing.path;
 
     // Already in-flight — return the shared future.
     if (_activeFetches.containsKey(key)) {
@@ -205,6 +304,23 @@ class FilePreloadManager {
     _activeFetches[key] = completer;
 
     try {
+      // Determine resume parameters from existing partial entry.
+      int resumeFromByte = 0;
+      String? resumeEtag;
+
+      if (existing != null && !existing.complete) {
+        // Check if partial file still exists on disk.
+        final partialFile = File(existing.path);
+        if (await partialFile.exists()) {
+          resumeFromByte = existing.sizeBytes;
+          resumeEtag = existing.etag;
+        } else {
+          // Partial entry exists in manifest but file is gone — remove it.
+          _diskCache.remove(key);
+          _currentCacheSizeBytes -= existing.sizeBytes;
+        }
+      }
+
       await _evictIfNeeded(bytesToFetch);
 
       // Ensure cache directory exists before writing.
@@ -220,6 +336,8 @@ class FilePreloadManager {
             headers: source.headers,
             bytesToFetch: bytesToFetch,
             connectionTimeoutSeconds: connectionTimeoutSeconds,
+            resumeFromByte: resumeFromByte,
+            etag: resumeEtag,
           ),
         ),
       );
@@ -230,10 +348,61 @@ class FilePreloadManager {
       }
 
       if (result.error != null) {
-        // Clean up partial file on error.
-        await _deleteFile(result.path);
+        // Increment retry count for resume failures.
+        _retryCount[key] = (_retryCount[key] ?? 0) + 1;
+
+        if (_retryCount[key]! >= 3) {
+          // Too many failures — give up, delete partial, clean up.
+          await _deleteFile(result.path);
+          final partial = _diskCache.remove(key);
+          if (partial != null) {
+            _currentCacheSizeBytes -= partial.sizeBytes;
+          }
+          _retryCount.remove(key);
+          await _saveManifest();
+          if (!completer.isCompleted) completer.complete(null);
+          return null;
+        }
+
+        // Save partial file as incomplete entry for future resume.
+        // Only if the file exists and has some data.
+        final partialFile = File(result.path);
+        if (await partialFile.exists()) {
+          final partialSize = await partialFile.length();
+          if (partialSize > 0) {
+            // Remove old entry size tracking before adding new.
+            final oldEntry = _diskCache.remove(key);
+            if (oldEntry != null) {
+              _currentCacheSizeBytes -= oldEntry.sizeBytes;
+            }
+
+            final partial = CachedFile(
+              path: result.path,
+              sizeBytes: partialSize,
+              cachedAt: DateTime.now(),
+              cacheKey: key,
+              complete: false,
+              etag: result.etag,
+              targetBytes: bytesToFetch,
+              lastCheckedAt: DateTime.now(),
+            );
+            _diskCache.put(key, partial);
+            _currentCacheSizeBytes += partialSize;
+            await _saveManifest();
+          }
+        }
+
         if (!completer.isCompleted) completer.complete(null);
         return null;
+      }
+
+      // Success — reset retry count.
+      _retryCount.remove(key);
+
+      // Remove old partial entry size tracking if present.
+      final oldEntry = _diskCache.remove(key);
+      if (oldEntry != null) {
+        _currentCacheSizeBytes -= oldEntry.sizeBytes;
       }
 
       final cached = CachedFile(
@@ -241,6 +410,9 @@ class FilePreloadManager {
         sizeBytes: result.sizeBytes,
         cachedAt: DateTime.now(),
         cacheKey: key,
+        complete: true,
+        etag: result.etag,
+        targetBytes: bytesToFetch,
       );
 
       _diskCache.put(key, cached);
@@ -281,6 +453,7 @@ class FilePreloadManager {
 
     _diskCache.clear();
     _lockedKeys.clear();
+    _retryCount.clear();
     _currentCacheSizeBytes = 0;
 
     await _deleteFile('$cacheDirectory/_manifest.json');
@@ -324,6 +497,7 @@ class FilePreloadManager {
     }
     _activeFetches.clear();
     _lockedKeys.clear();
+    _retryCount.clear();
   }
 
   // ──────────────────────────── Helpers ──────────────────────────────────
@@ -366,6 +540,9 @@ class FilePreloadManager {
   /// Downloads up to [params.bytesToFetch] bytes from [params.url] and writes
   /// them to [params.destPath]. Validates HTTP status codes and enforces
   /// connection timeout.
+  ///
+  /// Supports resume: if [params.resumeFromByte] > 0, sends Range and
+  /// If-Range headers to continue a previous partial download.
   static Future<_DownloadResult> _downloadInIsolate(
     _DownloadParams params,
   ) async {
@@ -377,14 +554,94 @@ class FilePreloadManager {
       for (final entry in params.headers.entries) {
         request.headers.set(entry.key, entry.value);
       }
-      // Request only the first N bytes if the server supports range requests.
-      request.headers.set('Range', 'bytes=0-${params.bytesToFetch - 1}');
+
+      final isResume = params.resumeFromByte > 0 && params.etag != null;
+
+      if (isResume) {
+        // Resume: request from resumeFromByte to bytesToFetch.
+        request.headers.set(
+          'Range',
+          'bytes=${params.resumeFromByte}-${params.bytesToFetch - 1}',
+        );
+        request.headers.set('If-Range', params.etag!);
+      } else {
+        // Fresh download: request first N bytes.
+        request.headers.set('Range', 'bytes=0-${params.bytesToFetch - 1}');
+      }
 
       final response = await request.close();
 
+      // Extract ETag from response headers.
+      final responseEtag = response.headers.value('etag');
+
+      if (isResume) {
+        if (response.statusCode == 206) {
+          // Server supports resume — append to existing file.
+          final file = File(params.destPath);
+          final fileSink = file.openWrite(mode: FileMode.append);
+          sink = fileSink;
+          var totalBytes = params.resumeFromByte;
+
+          await for (final chunk in response) {
+            try {
+              fileSink.add(chunk);
+            } catch (e) {
+              await fileSink.close().catchError((_) => fileSink);
+              sink = null;
+              return _DownloadResult(
+                path: params.destPath,
+                sizeBytes: params.resumeFromByte,
+                error: 'Disk write error: $e',
+                etag: responseEtag,
+              );
+            }
+            totalBytes += chunk.length;
+            if (totalBytes >= params.bytesToFetch) break;
+          }
+
+          await fileSink.flush();
+          await fileSink.close();
+          sink = null;
+
+          return _DownloadResult(
+            path: params.destPath,
+            sizeBytes: totalBytes,
+            etag: responseEtag,
+          );
+        } else if (response.statusCode == 200) {
+          // Server doesn't support resume or content changed — start fresh.
+          // Delete existing partial file and write from scratch.
+          try {
+            final existing = File(params.destPath);
+            if (await existing.exists()) await existing.delete();
+          } catch (_) {}
+
+          return _downloadFresh(
+            params: params,
+            response: response,
+            client: client,
+            responseEtag: responseEtag,
+          );
+        } else {
+          // 412 Precondition Failed or 416 Range Not Satisfiable:
+          // content changed, delete file and signal error to retry fresh.
+          await response.drain<void>();
+          try {
+            final existing = File(params.destPath);
+            if (await existing.exists()) await existing.delete();
+          } catch (_) {}
+          return _DownloadResult(
+            path: params.destPath,
+            sizeBytes: 0,
+            error: 'HTTP ${response.statusCode} — resume rejected',
+            etag: responseEtag,
+          );
+        }
+      }
+
+      // Non-resume path: standard download.
       // Only accept 200 (OK) or 206 (Partial Content).
       if (response.statusCode != 200 && response.statusCode != 206) {
-        // Drain the response to free resources.
         await response.drain<void>();
         return _DownloadResult(
           path: params.destPath,
@@ -393,48 +650,79 @@ class FilePreloadManager {
         );
       }
 
-      final file = File(params.destPath);
-      final fileSink = file.openWrite();
-      sink = fileSink;
-      var totalBytes = 0;
-
-      await for (final chunk in response) {
-        try {
-          fileSink.add(chunk);
-        } catch (e) {
-          // Disk write error — delete partial file.
-          await fileSink.close().catchError((_) => fileSink);
-          sink = null;
-          try { await file.delete(); } catch (_) {}
-          return _DownloadResult(
-            path: params.destPath,
-            sizeBytes: 0,
-            error: 'Disk write error: $e',
-          );
-        }
-        totalBytes += chunk.length;
-        if (totalBytes >= params.bytesToFetch) break;
-      }
-
-      await fileSink.flush();
-      await fileSink.close();
-      sink = null;
-
-      return _DownloadResult(path: params.destPath, sizeBytes: totalBytes);
+      return _downloadFresh(
+        params: params,
+        response: response,
+        client: client,
+        responseEtag: responseEtag,
+      );
     } catch (e) {
-      // Clean up partial file on error.
+      // Clean up partial file on error — but keep it for resume if it exists.
       try {
         if (sink != null) {
           await sink.close().catchError((_) => sink);
         }
+      } catch (_) {}
+
+      // Check if we have any partial data worth keeping for resume.
+      int partialSize = 0;
+      try {
         final partialFile = File(params.destPath);
         if (await partialFile.exists()) {
-          await partialFile.delete();
+          partialSize = await partialFile.length();
         }
       } catch (_) {}
-      return _DownloadResult(path: params.destPath, sizeBytes: 0, error: '$e');
+
+      return _DownloadResult(
+        path: params.destPath,
+        sizeBytes: partialSize,
+        error: '$e',
+      );
     } finally {
       client.close();
     }
+  }
+
+  /// Writes response data to a fresh file (no append).
+  ///
+  /// Extracted to avoid code duplication between fresh downloads
+  /// and resume-rejected-fallback-to-fresh scenarios.
+  static Future<_DownloadResult> _downloadFresh({
+    required _DownloadParams params,
+    required HttpClientResponse response,
+    required HttpClient client,
+    required String? responseEtag,
+  }) async {
+    final file = File(params.destPath);
+    final fileSink = file.openWrite();
+    var totalBytes = 0;
+
+    await for (final chunk in response) {
+      try {
+        fileSink.add(chunk);
+      } catch (e) {
+        await fileSink.close().catchError((_) => fileSink);
+        try {
+          await file.delete();
+        } catch (_) {}
+        return _DownloadResult(
+          path: params.destPath,
+          sizeBytes: 0,
+          error: 'Disk write error: $e',
+          etag: responseEtag,
+        );
+      }
+      totalBytes += chunk.length;
+      if (totalBytes >= params.bytesToFetch) break;
+    }
+
+    await fileSink.flush();
+    await fileSink.close();
+
+    return _DownloadResult(
+      path: params.destPath,
+      sizeBytes: totalBytes,
+      etag: responseEtag,
+    );
   }
 }
