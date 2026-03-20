@@ -204,5 +204,114 @@ void main() {
 
       expect(limits.maxConcurrent, 1);
     });
+
+    test('null bandwidth has no effect on limits', () {
+      const configWithBw = VideoPoolConfig(
+        maxConcurrent: 4,
+        preloadCount: 2,
+        memoryBudgetBytes: 200 * 1024 * 1024,
+        bandwidthThresholds: BandwidthThresholds(),
+      );
+
+      final limits = orchestrator.computeEffectiveLimits(
+        config: configWithBw,
+        thermalLevel: ThermalLevel.nominal,
+        memoryPressure: MemoryPressureLevel.normal,
+        bandwidthEstimate: null,
+      );
+
+      expect(limits.maxConcurrent, 4);
+      expect(limits.preloadCount, 2);
+    });
+
+    test('bandwidth below low threshold disables preload', () {
+      const configWithBw = VideoPoolConfig(
+        maxConcurrent: 4,
+        preloadCount: 2,
+        memoryBudgetBytes: 200 * 1024 * 1024,
+        bandwidthThresholds: BandwidthThresholds(),
+      );
+
+      final limits = orchestrator.computeEffectiveLimits(
+        config: configWithBw,
+        thermalLevel: ThermalLevel.nominal,
+        memoryPressure: MemoryPressureLevel.normal,
+        bandwidthEstimate: 50 * 1024, // 50 KB/s, below lowBandwidth (100 KB/s)
+      );
+
+      expect(limits.maxConcurrent, 4);
+      expect(limits.preloadCount, 0);
+    });
+
+    test('bandwidth between low and medium disables preload', () {
+      const configWithBw = VideoPoolConfig(
+        maxConcurrent: 4,
+        preloadCount: 2,
+        memoryBudgetBytes: 200 * 1024 * 1024,
+        bandwidthThresholds: BandwidthThresholds(),
+      );
+
+      final limits = orchestrator.computeEffectiveLimits(
+        config: configWithBw,
+        thermalLevel: ThermalLevel.nominal,
+        memoryPressure: MemoryPressureLevel.normal,
+        bandwidthEstimate:
+            200 * 1024, // 200 KB/s, between low (100) and medium (500)
+      );
+
+      expect(limits.maxConcurrent, 4);
+      expect(limits.preloadCount, 0);
+    });
+
+    test('bandwidth between medium and high reduces preload by 1', () {
+      const configWithBw = VideoPoolConfig(
+        maxConcurrent: 4,
+        preloadCount: 2,
+        memoryBudgetBytes: 200 * 1024 * 1024,
+        bandwidthThresholds: BandwidthThresholds(),
+      );
+
+      final limits = orchestrator.computeEffectiveLimits(
+        config: configWithBw,
+        thermalLevel: ThermalLevel.nominal,
+        memoryPressure: MemoryPressureLevel.normal,
+        bandwidthEstimate:
+            1024 * 1024, // 1 MB/s, between medium (500KB) and high (2MB)
+      );
+
+      expect(limits.maxConcurrent, 4);
+      expect(limits.preloadCount, 1);
+    });
+
+    test('bandwidth above high threshold keeps full preload', () {
+      const configWithBw = VideoPoolConfig(
+        maxConcurrent: 4,
+        preloadCount: 2,
+        memoryBudgetBytes: 200 * 1024 * 1024,
+        bandwidthThresholds: BandwidthThresholds(),
+      );
+
+      final limits = orchestrator.computeEffectiveLimits(
+        config: configWithBw,
+        thermalLevel: ThermalLevel.nominal,
+        memoryPressure: MemoryPressureLevel.normal,
+        bandwidthEstimate: 3 * 1024 * 1024, // 3 MB/s, above high (2 MB/s)
+      );
+
+      expect(limits.maxConcurrent, 4);
+      expect(limits.preloadCount, 2);
+    });
+
+    test('bandwidth has no effect without bandwidthThresholds config', () {
+      final limits = orchestrator.computeEffectiveLimits(
+        config: baseConfig, // no bandwidthThresholds
+        thermalLevel: ThermalLevel.nominal,
+        memoryPressure: MemoryPressureLevel.normal,
+        bandwidthEstimate: 50 * 1024, // very low, but no thresholds configured
+      );
+
+      expect(limits.maxConcurrent, 4);
+      expect(limits.preloadCount, 2);
+    });
   });
 }

@@ -108,6 +108,23 @@ void main() {
     });
   });
 
+  group('BandwidthSampleEvent', () {
+    test('stores bandwidth measurement fields', () {
+      final event = BandwidthSampleEvent(
+        bytesReceived: 2 * 1024 * 1024,
+        durationMs: 500,
+        estimatedBytesPerSec: 4 * 1024 * 1024,
+        concurrentDownloadsCount: 1,
+      );
+
+      expect(event.bytesReceived, 2 * 1024 * 1024);
+      expect(event.durationMs, 500);
+      expect(event.estimatedBytesPerSec, 4 * 1024 * 1024);
+      expect(event.concurrentDownloadsCount, 1);
+      expect(event.timestamp, greaterThan(0));
+    });
+  });
+
   group('ErrorEvent', () {
     test('stores code, message, and fatal flag', () {
       final event = ErrorEvent(
@@ -123,7 +140,7 @@ void main() {
   });
 
   group('Exhaustive switch', () {
-    test('sealed class enables exhaustive switching on all 7 types', () {
+    test('sealed class enables exhaustive switching on all 8 types', () {
       final PoolEvent event = SwapEvent(
         entryId: 1,
         fromIndex: 0,
@@ -139,6 +156,7 @@ void main() {
         CacheEvent() => 'cache',
         LifecycleEvent() => 'lifecycle',
         EmergencyFlushEvent() => 'emergency',
+        BandwidthSampleEvent() => 'bandwidth',
         ErrorEvent() => 'error',
       };
 

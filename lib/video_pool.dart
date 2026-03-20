@@ -20,6 +20,7 @@ export 'src/core/adapter/player_state.dart';
 export 'src/core/adapter/media_kit_adapter.dart';
 
 // Cache
+export 'src/core/cache/bandwidth_estimator.dart';
 export 'src/core/cache/file_preload_manager.dart';
 
 // Lifecycle
@@ -35,6 +36,7 @@ export 'src/core/events/pool_event.dart';
 export 'src/core/events/metrics_snapshot.dart';
 
 // Pool
+export 'src/core/pool/bandwidth_thresholds.dart';
 export 'src/core/pool/pool_config.dart';
 export 'src/core/pool/pool_entry.dart';
 export 'src/core/pool/pool_statistics.dart';

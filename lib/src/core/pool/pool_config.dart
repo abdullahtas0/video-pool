@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../lifecycle/lifecycle_policy.dart';
 import '../models/playback_config.dart';
+import 'bandwidth_thresholds.dart';
 
 /// Log verbosity level for [VideoPoolLogger].
 enum LogLevel {
@@ -44,6 +45,7 @@ class VideoPoolConfig {
     this.preloadTimeout = const Duration(seconds: 10),
     this.defaultPlaybackConfig = const PlaybackConfig(),
     this.lifecyclePolicy,
+    this.bandwidthThresholds,
     this.logLevel = LogLevel.none,
   })  : assert(maxConcurrent > 0, 'maxConcurrent must be positive'),
         assert(maxConcurrent <= 10, 'maxConcurrent must not exceed 10'),
@@ -91,6 +93,12 @@ class VideoPoolConfig {
   /// Custom lifecycle policy. When null, [DefaultLifecyclePolicy] is used.
   final LifecyclePolicy? lifecyclePolicy;
 
+  /// Bandwidth thresholds for network-aware preload adjustment.
+  ///
+  /// When provided, the orchestrator reduces preload count based on
+  /// measured network bandwidth. When null, bandwidth has no effect.
+  final BandwidthThresholds? bandwidthThresholds;
+
   /// Log verbosity level.
   final LogLevel logLevel;
 
@@ -104,6 +112,7 @@ class VideoPoolConfig {
     Duration? preloadTimeout,
     PlaybackConfig? defaultPlaybackConfig,
     LifecyclePolicy? lifecyclePolicy,
+    BandwidthThresholds? bandwidthThresholds,
     LogLevel? logLevel,
   }) {
     return VideoPoolConfig(
@@ -118,6 +127,7 @@ class VideoPoolConfig {
       defaultPlaybackConfig:
           defaultPlaybackConfig ?? this.defaultPlaybackConfig,
       lifecyclePolicy: lifecyclePolicy ?? this.lifecyclePolicy,
+      bandwidthThresholds: bandwidthThresholds ?? this.bandwidthThresholds,
       logLevel: logLevel ?? this.logLevel,
     );
   }
@@ -133,6 +143,7 @@ class VideoPoolConfig {
         other.visibilityPauseThreshold == visibilityPauseThreshold &&
         other.preloadTimeout == preloadTimeout &&
         other.defaultPlaybackConfig == defaultPlaybackConfig &&
+        other.bandwidthThresholds == bandwidthThresholds &&
         other.logLevel == logLevel;
   }
 
@@ -145,6 +156,7 @@ class VideoPoolConfig {
         visibilityPauseThreshold,
         preloadTimeout,
         defaultPlaybackConfig,
+        bandwidthThresholds,
         logLevel,
       );
 

@@ -67,6 +67,7 @@ class LifecycleOrchestrator {
     required VideoPoolConfig config,
     required ThermalLevel thermalLevel,
     required MemoryPressureLevel memoryPressure,
+    int? bandwidthEstimate,
   }) {
     var maxConcurrent = config.maxConcurrent;
     var preloadCount = config.preloadCount;
@@ -106,11 +107,26 @@ class LifecycleOrchestrator {
         memoryBudget = (memoryBudget * 0.25).round();
     }
 
+    // Bandwidth throttling (after thermal + memory).
+    // Only applies if bandwidthThresholds is configured and we have data.
+    final bwThresholds = config.bandwidthThresholds;
+    if (bwThresholds != null && bandwidthEstimate != null) {
+      if (bandwidthEstimate < bwThresholds.lowBandwidth) {
+        preloadCount = 0;
+      } else if (bandwidthEstimate < bwThresholds.mediumBandwidth) {
+        preloadCount = 0;
+      } else if (bandwidthEstimate < bwThresholds.highBandwidth) {
+        preloadCount = (preloadCount - 1).clamp(0, preloadCount);
+      }
+      // >= highBandwidth: no change (full preload)
+    }
+
     logger.debug(
       'Effective limits: maxConcurrent=$maxConcurrent, '
       'preloadCount=$preloadCount, '
       'memoryBudget=${memoryBudget ~/ (1024 * 1024)}MB '
-      '(thermal=$thermalLevel, memory=$memoryPressure)',
+      '(thermal=$thermalLevel, memory=$memoryPressure, '
+      'bandwidth=${bandwidthEstimate ?? 'unknown'})',
     );
 
     return (

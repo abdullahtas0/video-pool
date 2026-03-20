@@ -175,6 +175,32 @@ class EmergencyFlushEvent extends PoolEvent {
   final int disposedCount;
 }
 
+/// A bandwidth measurement sample from a completed download.
+///
+/// Emitted after each successful prefetch, allowing consumers to track
+/// network conditions over time.
+class BandwidthSampleEvent extends PoolEvent {
+  /// Creates a bandwidth sample event.
+  BandwidthSampleEvent({
+    required this.bytesReceived,
+    required this.durationMs,
+    required this.estimatedBytesPerSec,
+    required this.concurrentDownloadsCount,
+  });
+
+  /// Number of bytes downloaded in this sample.
+  final int bytesReceived;
+
+  /// Download duration in milliseconds.
+  final int durationMs;
+
+  /// Current EMA-smoothed bandwidth estimate in bytes/second.
+  final int estimatedBytesPerSec;
+
+  /// Number of concurrent downloads at the time of measurement.
+  final int concurrentDownloadsCount;
+}
+
 /// Emitted when an error occurs within the pool or one of its subsystems.
 class ErrorEvent extends PoolEvent {
   /// Creates an error event.

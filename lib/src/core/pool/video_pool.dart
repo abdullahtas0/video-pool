@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../adapter/player_adapter.dart';
+import '../cache/bandwidth_estimator.dart';
 import '../events/event_ring_buffer.dart';
 import '../events/metrics_snapshot.dart';
 import '../events/pool_event.dart';
@@ -93,6 +94,9 @@ class VideoPool {
 
   /// Optional disk cache manager for preloading video data.
   final FilePreloadManager? _filePreloadManager;
+
+  /// Estimates network bandwidth from prefetch download durations.
+  final BandwidthEstimator _bandwidthEstimator = BandwidthEstimator();
 
   /// Next entry ID (monotonically increasing, never reused).
   int _nextEntryId = 0;
@@ -241,6 +245,7 @@ class VideoPool {
       config: config,
       thermalLevel: _thermalLevel,
       memoryPressure: _memoryPressure,
+      bandwidthEstimate: _bandwidthEstimator.estimatedBytesPerSec,
     );
 
     // Step 2: Determine currently active slot indices.
@@ -420,8 +425,24 @@ class VideoPool {
         _filePreloadManager.lockKey(source.cacheKey);
         _logger.debug('Cache hit for index $index: $cachedPath');
       } else {
-        // Fire-and-forget prefetch for future use.
-        _filePreloadManager.prefetch(source);
+        // Fire-and-forget prefetch with bandwidth measurement.
+        final sw = Stopwatch()..start();
+        _filePreloadManager.prefetch(source).then((path) {
+          sw.stop();
+          if (path != null && !_disposed) {
+            _bandwidthEstimator.addSample(
+              2 * 1024 * 1024, // bytesToFetch default
+              sw.elapsedMilliseconds,
+            );
+            _emit(BandwidthSampleEvent(
+              bytesReceived: 2 * 1024 * 1024,
+              durationMs: sw.elapsedMilliseconds,
+              estimatedBytesPerSec:
+                  _bandwidthEstimator.estimatedBytesPerSec ?? 0,
+              concurrentDownloadsCount: 1,
+            ));
+          }
+        });
       }
     }
 

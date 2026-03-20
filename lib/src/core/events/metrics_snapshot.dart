@@ -17,6 +17,7 @@ class MetricsSnapshot {
     required this.avgSwapLatencyMs,
     required this.throttleCount,
     required this.totalEvents,
+    this.avgBandwidthBytesPerSec = 0.0,
   });
 
   /// The wall-clock time this snapshot was computed, in milliseconds since epoch.
@@ -41,6 +42,10 @@ class MetricsSnapshot {
   /// The total number of events currently stored in the buffer.
   final int totalEvents;
 
+  /// The average bandwidth estimate in bytes/second across all
+  /// [BandwidthSampleEvent]s. Returns 0.0 when there are no samples.
+  final double avgBandwidthBytesPerSec;
+
   /// Computes a [MetricsSnapshot] from the current contents of [buffer].
   ///
   /// Iterates over the buffer's snapshot exactly once, accumulating all
@@ -53,6 +58,8 @@ class MetricsSnapshot {
     var swapCount = 0;
     var swapDurationSum = 0;
     var throttles = 0;
+    var bandwidthSampleCount = 0;
+    var bandwidthSum = 0;
 
     for (final event in events) {
       switch (event) {
@@ -71,6 +78,9 @@ class MetricsSnapshot {
           swapDurationSum += durationMs;
         case ThrottleEvent():
           throttles++;
+        case BandwidthSampleEvent(:final estimatedBytesPerSec):
+          bandwidthSampleCount++;
+          bandwidthSum += estimatedBytesPerSec;
         case _:
           break;
       }
@@ -85,6 +95,9 @@ class MetricsSnapshot {
           swapCount > 0 ? swapDurationSum / swapCount.toDouble() : 0.0,
       throttleCount: throttles,
       totalEvents: events.length,
+      avgBandwidthBytesPerSec: bandwidthSampleCount > 0
+          ? bandwidthSum / bandwidthSampleCount.toDouble()
+          : 0.0,
     );
   }
 }
