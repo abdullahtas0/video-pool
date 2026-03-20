@@ -30,6 +30,10 @@ export 'src/core/lifecycle/lifecycle_orchestrator.dart';
 // Memory Manager
 export 'src/core/memory/memory_manager.dart';
 
+// Events
+export 'src/core/events/pool_event.dart';
+export 'src/core/events/metrics_snapshot.dart';
+
 // Pool
 export 'src/core/pool/pool_config.dart';
 export 'src/core/pool/pool_entry.dart';
