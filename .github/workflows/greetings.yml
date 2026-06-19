@@ -1,0 +1,29 @@
+name: Greet new contributors
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  greeting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: >
+            Thanks for opening your first issue on video_pool! 🎉
+            To help us investigate quickly, please make sure you've included your
+            Flutter and Dart versions, the platform (iOS / Android), the package
+            version, and clear steps to reproduce. A maintainer will take a look
+            soon.
+          pr-message: >
+            Thanks for your first pull request to video_pool! 🎉
+            Please make sure the analyzer is clean (`flutter analyze`) and tests
+            pass (`flutter test`). A maintainer will review it shortly.

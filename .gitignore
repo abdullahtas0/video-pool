@@ -40,3 +40,6 @@ example/ios/Flutter/Flutter.podspec
 CLAUDE.md
 .superpowers/
 docs/
+
+# Crash logs
+flutter_*.log

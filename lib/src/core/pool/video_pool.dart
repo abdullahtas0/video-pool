@@ -471,6 +471,13 @@ class VideoPool {
       }
       entry.lifecycleNotifier.value = LifecycleState.playing;
       try {
+        // Restore full volume before playing. A cached/reused entry may have
+        // been muted earlier — either when it was demoted to a preload slot
+        // (see 4b) or released (see [_releaseEntry]). Without this, scrolling
+        // back to an already-loaded video would replay it silently, because
+        // volume is only reset to full inside [PlayerAdapter.swapSource],
+        // which does not run on a cache hit.
+        await entry.adapter.setVolume(1.0);
         await entry.adapter.play();
       } catch (e, st) {
         _logger.error('Play failed for index $index', e, st);
@@ -635,6 +642,8 @@ class VideoPool {
     } else if (state == LifecycleState.paused ||
         state == LifecycleState.ready) {
       try {
+        // Restore full volume in case this entry was muted while paused.
+        await entry.adapter.setVolume(1.0);
         await entry.adapter.play();
         entry.lifecycleNotifier.value = LifecycleState.playing;
       } catch (e, st) {

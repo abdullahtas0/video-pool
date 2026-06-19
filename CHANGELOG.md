@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.3.2
+
+### Bug Fixes
+- **Restored audio when scrolling back to an already-loaded video** — When an
+  entry was demoted from primary to a preload/paused slot it was muted
+  (`setVolume(0)`), but volume was only ever restored inside `swapSource`,
+  which doesn't run on a cache hit. Revisiting a previously loaded video
+  therefore replayed it silently. The pool now restores full volume whenever an
+  entry transitions to playing (both in reconciliation and in
+  `togglePlayPause`). Added a regression test.
+
+### Performance
+- **Faster HLS startup** — `MediaKitAdapter` now accepts a `PlayerConfiguration`
+  and applies libmpv network tuning (`hls-bitrate=min`, smaller initial
+  read-ahead, network timeout) behind a `fastStartHls` flag (default `true`).
+  HLS streams begin at the lowest variant so the first segment arrives quickly;
+  ABR still adapts upward during playback.
+
+### iOS / Tooling
+- **Swift Package Manager support** — Added `ios/video_pool/Package.swift` and
+  moved native sources to `ios/video_pool/Sources/video_pool/` for Flutter's
+  SwiftPM migration (3.44+). The CocoaPods podspec is retained and now points at
+  the same shared sources, so both build systems keep working.
+
 ## 0.3.1
 
 ### Bug Fixes

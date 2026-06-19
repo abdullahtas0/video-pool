@@ -20,12 +20,26 @@ class MediaKitAdapter implements PlayerAdapter {
   /// Creates a new [MediaKitAdapter].
   ///
   /// If [player] is provided it will be used directly (useful for testing).
-  /// Otherwise a new [Player] is created internally.
-  MediaKitAdapter({Player? player})
-      : _player = player ?? Player(),
+  /// Otherwise a new [Player] is created internally using [configuration].
+  ///
+  /// When [fastStartHls] is true (the default), the adapter applies a set of
+  /// libmpv properties that reduce HLS (`.m3u8`) startup latency: it begins
+  /// at the lowest variant bitrate so the first segment downloads quickly and
+  /// shrinks the initial read-ahead window. ABR still adapts upward during
+  /// playback. Set this to false to keep media_kit's default behavior.
+  MediaKitAdapter({
+    Player? player,
+    PlayerConfiguration configuration = const PlayerConfiguration(),
+    bool fastStartHls = true,
+  })  : _player = player ?? Player(configuration: configuration),
         _stateNotifier = ValueNotifier<PlayerState>(const PlayerState()) {
     _controller = media_kit_video.VideoController(_player);
     _setupListeners();
+    if (fastStartHls) {
+      // Fire-and-forget — properties are best-effort and may be unsupported
+      // on some platforms.
+      _applyNetworkTuning();
+    }
   }
 
   final Player _player;
@@ -166,6 +180,33 @@ class MediaKitAdapter implements PlayerAdapter {
   }
 
   // ──────────────────────────── Internals ────────────────────────────────
+
+  /// Apply libmpv tuning that reduces HLS / network startup latency.
+  ///
+  /// These are best-effort: on platforms where `_player.platform` is not a
+  /// [NativePlayer] (or a property is unknown), the call is silently ignored.
+  ///
+  /// The dominant cost of starting an HLS stream is the chain of round-trips
+  /// (master playlist → media playlist → first segment) plus, by default,
+  /// mpv probing every variant to pick a bitrate. Starting at the lowest
+  /// rendition lets the first segment arrive fast; ABR then adapts upward.
+  Future<void> _applyNetworkTuning() async {
+    final platform = _player.platform;
+    if (platform is! NativePlayer) return;
+    try {
+      // Begin at the lowest HLS variant so the first segment is small and
+      // playback starts quickly. ABR still scales up during playback.
+      await platform.setProperty('hls-bitrate', 'min');
+      // Decode the first frame before filling a large read-ahead buffer.
+      await platform.setProperty('cache', 'yes');
+      await platform.setProperty('cache-secs', '10');
+      await platform.setProperty('demuxer-readahead-secs', '5');
+      // Fail fast on stalled segment requests instead of hanging the feed.
+      await platform.setProperty('network-timeout', '10');
+    } catch (_) {
+      // Property unsupported on this platform/build — ignore.
+    }
+  }
 
   /// Resolve the URI string that media_kit should open for [source].
   String _mediaUriForSource(VideoSource source) {

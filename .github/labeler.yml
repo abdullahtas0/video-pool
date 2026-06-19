@@ -1,0 +1,18 @@
+# Configuration for actions/labeler@v5.
+# Labels referenced here must already exist in the repository.
+
+"platform: ios":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "ios/**"
+
+"platform: android":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "android/**"
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - "doc/**"
