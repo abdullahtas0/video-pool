@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:path_provider/path_provider.dart';
@@ -58,12 +59,14 @@ class _AppShellState extends State<_AppShell> {
   int _currentTab = 0;
 
   // Shared decoder budget for cooperative multi-pool.
-  final GlobalDecoderBudget _decoderBudget = GlobalDecoderBudget(totalTokens: 4);
+  final GlobalDecoderBudget _decoderBudget = GlobalDecoderBudget(
+    totalTokens: 4,
+  );
 
   // Shared pool for Feed + Insights tabs.
   VideoPool? _pool;
   FilePreloadManager? _cacheManager;
-  DeviceMonitor? _deviceMonitor;
+  VideoPoolPlatform? _devicePlatform;
   AudioFocusManager? _audioFocusManager;
   StreamSubscription<DeviceStatus>? _statusSubscription;
   bool _ready = false;
@@ -75,15 +78,19 @@ class _AppShellState extends State<_AppShell> {
   }
 
   Future<void> _initPool() async {
-    // Initialize disk cache.
-    final cacheDir = await getTemporaryDirectory();
-    final cacheManager = FilePreloadManager(
-      cacheDirectory: '${cacheDir.path}/video_pool_cache',
-    );
-    await cacheManager.loadManifest();
+    // Initialize disk cache. Skipped on web, which has no writable
+    // filesystem — the pool then streams network URLs directly.
+    FilePreloadManager? cacheManager;
+    if (!kIsWeb) {
+      final cacheDir = await getTemporaryDirectory();
+      cacheManager = FilePreloadManager(
+        cacheDirectory: '${cacheDir.path}/video_pool_cache',
+      );
+      await cacheManager.loadManifest();
+    }
 
     if (!mounted) {
-      cacheManager.dispose();
+      cacheManager?.dispose();
       return;
     }
 
@@ -102,15 +109,17 @@ class _AppShellState extends State<_AppShell> {
       decoderBudget: _decoderBudget,
     );
 
-    // Device monitoring.
-    final deviceMonitor = DeviceMonitor();
+    // Device monitoring. defaultVideoPoolPlatform() returns the native
+    // DeviceMonitor on Android/iOS and an inert no-op platform elsewhere
+    // (web/desktop), so this works on every platform without crashing.
+    final platform = defaultVideoPoolPlatform();
     try {
-      await deviceMonitor.startMonitoring();
+      await platform.startMonitoring();
     } catch (_) {
       // May not be available on all platforms.
     }
 
-    final statusSub = deviceMonitor.statusStream.listen((status) {
+    final statusSub = platform.statusStream.listen((status) {
       pool.onDeviceStatusChanged(
         thermalLevel: status.thermalLevel,
         memoryPressure: status.memoryPressureLevel,
@@ -118,13 +127,10 @@ class _AppShellState extends State<_AppShell> {
     });
 
     // Audio focus.
-    final audioFocus = AudioFocusManager(platform: deviceMonitor);
+    final audioFocus = AudioFocusManager(platform: platform);
     audioFocus.setCallbacks(
       onPause: () {
-        pool.onVisibilityChanged(
-          primaryIndex: -1,
-          visibilityRatios: const {},
-        );
+        pool.onVisibilityChanged(primaryIndex: -1, visibilityRatios: const {});
       },
       onResume: () {
         pool.resumeLastState();
@@ -134,7 +140,7 @@ class _AppShellState extends State<_AppShell> {
 
     if (!mounted) {
       pool.dispose();
-      cacheManager.dispose();
+      cacheManager?.dispose();
       statusSub.cancel();
       audioFocus.dispose();
       return;
@@ -143,7 +149,7 @@ class _AppShellState extends State<_AppShell> {
     setState(() {
       _pool = pool;
       _cacheManager = cacheManager;
-      _deviceMonitor = deviceMonitor;
+      _devicePlatform = platform;
       _audioFocusManager = audioFocus;
       _statusSubscription = statusSub;
       _ready = true;
@@ -155,9 +161,7 @@ class _AppShellState extends State<_AppShell> {
       case 0:
         return VideoPoolProvider(
           pool: _pool!,
-          child: const EventDebugOverlay(
-            child: FeedTab(),
-          ),
+          child: const EventDebugOverlay(child: FeedTab()),
         );
       case 1:
         return DiscoverTab(decoderBudget: _decoderBudget);
@@ -175,7 +179,7 @@ class _AppShellState extends State<_AppShell> {
     _pool?.dispose().catchError((_) {});
     _cacheManager?.dispose().catchError((_) {});
     try {
-      _deviceMonitor?.stopMonitoring();
+      _devicePlatform?.stopMonitoring();
     } catch (_) {}
     _decoderBudget.dispose();
     super.dispose();
@@ -228,20 +232,20 @@ class _AppShellState extends State<_AppShell> {
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.play_circle_outline),
-            selectedIcon: Icon(Icons.play_circle_filled,
-                color: Color(0xFF7C4DFF)),
+            selectedIcon: Icon(
+              Icons.play_circle_filled,
+              color: Color(0xFF7C4DFF),
+            ),
             label: 'Feed',
           ),
           NavigationDestination(
             icon: Icon(Icons.explore_outlined),
-            selectedIcon:
-                Icon(Icons.explore, color: Color(0xFF7C4DFF)),
+            selectedIcon: Icon(Icons.explore, color: Color(0xFF7C4DFF)),
             label: 'Discover',
           ),
           NavigationDestination(
             icon: Icon(Icons.insights_outlined),
-            selectedIcon:
-                Icon(Icons.insights, color: Color(0xFF7C4DFF)),
+            selectedIcon: Icon(Icons.insights, color: Color(0xFF7C4DFF)),
             label: 'Insights',
           ),
         ],

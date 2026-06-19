@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.4.0
+
+### Web Support
+- **The package now compiles and runs on web** via conditional compilation.
+  Two web-incompatible code paths were isolated behind `dart.library.io`
+  conditional imports with no-op web stubs:
+  - `MediaKitAdapter`'s HLS tuning (`NativePlayer.setProperty`, which does not
+    exist on media_kit's web player) → `network_tuning.dart` resolves to a
+    native impl or a web no-op.
+  - `FilePreloadManager` (`dart:io` + `dart:isolate`) and `ThumbnailExtractor`
+    (`dart:io` + platform channel) → each resolves to the native impl or an
+    inert web stub. The shared `CachedFile` type moved to a pure-Dart
+    `file_preload_types.dart`. On web the disk cache reports "not cached" and
+    `prefetch` returns `null`, so the pool streams network URLs directly.
+- **Verified end-to-end in Chrome**: `flutter build web` succeeds and the app
+  runs — the pool initializes, reconciles, and assigns entries with no errors
+  or `MissingPluginException`. Desktop (macOS) re-verified for no regression.
+- **Example made platform-agnostic**: skips the disk cache on web (`kIsWeb`) and
+  uses `defaultVideoPoolPlatform()` so it runs on Android, iOS, web, and desktop.
+
+### Testing
+- Added web-stub unit tests (`FilePreloadManager`, `ThumbnailExtractor`, and the
+  `applyNetworkTuning` no-op). 255 tests total.
+
 ## 0.3.4
 
 ### Documentation / Platform Scope Correction
