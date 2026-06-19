@@ -56,7 +56,7 @@ VideoPoolScope(
 
 ```yaml
 dependencies:
-  video_pool: ^0.3.2
+  video_pool: ^0.3.4
   media_kit: ^1.1.11
   media_kit_video: ^1.2.5
   media_kit_libs_video: ^1.0.5
@@ -278,12 +278,14 @@ This package uses [media_kit](https://pub.dev/packages/media_kit) for video play
 |----------|--------|-------|
 | Android | ✅ Supported | Full native monitoring (thermal, memory, audio focus) |
 | iOS | ✅ Supported | Full native monitoring (thermal, memory, audio focus) |
-| Web / macOS / Windows / Linux | ✅ Runs | Core pooling is pure Dart and media_kit plays on these platforms. A no-op platform is selected automatically, so the pool runs everywhere — it just forgoes native thermal/memory throttling and audio-focus management (Android/iOS only). |
+| macOS / Windows / Linux | ✅ Supported | Pooling + playback work via media_kit. A no-op device monitor is selected automatically (no native thermal/memory throttling or audio focus — those are Android/iOS only). Verified end-to-end on macOS (builds, runs, pool active, no `MissingPluginException`). |
+| Web | 🚧 Planned | Does not compile yet: media_kit's web player has no `NativePlayer.setProperty` (used for HLS tuning) and the disk cache uses `dart:io`. Web support needs conditional compilation — see the [roadmap](#roadmap). |
 
-> pub.dev platform badges list Android/iOS because those are the declared native plugin platforms. The package still imports and runs on web and desktop.
+> pub.dev platform badges list Android/iOS because those are the declared native plugin platforms; the package additionally imports and runs on macOS, Windows, and Linux.
 
 ### Roadmap
 
+- **Web support** — conditional compilation so the package compiles and runs on web: a no-op stub for the media_kit `setProperty` HLS tuning, and a `dart:io`-free fallback for the disk cache / thumbnail extractor.
 - **`video_player`-compatible adapter** — an optional adapter backed by [`video_player`](https://pub.dev/packages/video_player) so you can swap in alternative backends like [`fvp`](https://pub.dev/packages/fvp) instead of media_kit.
 
 ### Minimum Requirements

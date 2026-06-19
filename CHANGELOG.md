@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.3.4
+
+### Documentation / Platform Scope Correction
+- **Corrected platform support after end-to-end verification.** 0.3.3 described
+  web as running; that was premature. Verified results:
+  - **macOS / Windows / Linux: supported.** Built and ran the example on macOS —
+    the pool reconciles and plays through media_kit with no
+    `MissingPluginException` (the no-op device monitor is selected automatically).
+  - **Web: not yet compilable.** Two blockers surfaced at build time: media_kit's
+    web player has no `NativePlayer.setProperty` (used by the HLS tuning added in
+    0.3.2), and the disk cache / thumbnail extractor import `dart:io`. Web support
+    now requires conditional compilation and is tracked on the roadmap.
+- No library code changed in this release.
+
 ## 0.3.3
 
 ### Web & Desktop
