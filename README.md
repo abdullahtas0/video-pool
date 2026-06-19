@@ -45,6 +45,7 @@ VideoPoolScope(
 | **Memory Pressure** | Responds to `onTrimMemory(RUNNING_CRITICAL)` with emergency flush to 1 player. |
 | **Disk Pre-fetching** | 500MB LRU cache downloads first 2MB of upcoming videos in isolate. Instant playback on scroll-back. |
 | **Audio Focus** | System audio session management. Auto-pause on background, phone call, Spotify, other media app. Responds to iOS interruptions and Android focus changes. |
+| **HLS Fast-Start** | `MediaKitAdapter` tunes libmpv for `.m3u8` streams — starts at the lowest variant so the first segment arrives quickly, then ABR adapts upward. Toggle with `fastStartHls` (default on). |
 | **Ready-to-use Widgets** | `VideoFeedView` (TikTok), `VideoListView` (Instagram), `VideoCard` — all wiring handled. |
 | **Custom Policies** | Pluggable `LifecyclePolicy` for battery-saver, data-saver, or custom behaviors. |
 | **Debug Logging** | Configurable `LogLevel` shows pool state, swaps, thermal events in dev console. |
@@ -55,7 +56,7 @@ VideoPoolScope(
 
 ```yaml
 dependencies:
-  video_pool: ^0.3.1
+  video_pool: ^0.3.2
   media_kit: ^1.1.11
   media_kit_video: ^1.2.5
   media_kit_libs_video: ^1.0.5
@@ -268,8 +269,21 @@ The pool dynamically adapts to device conditions:
 
 This package uses [media_kit](https://pub.dev/packages/media_kit) for video playback. Follow the [media_kit platform setup guide](https://github.com/media-kit/media-kit#platform-specific-preparation) for:
 
-- **iOS**: Add to `Podfile` and run `pod install`
+- **iOS**: Add to `Podfile` and run `pod install`. Swift Package Manager is also supported (Flutter 3.44+) — no extra steps; the same native sources back both build systems.
 - **Android**: No additional setup needed (uses bundled native libraries)
+
+### Platform Support
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| Android | ✅ Supported | Full native monitoring (thermal, memory, audio focus) |
+| iOS | ✅ Supported | Full native monitoring (thermal, memory, audio focus) |
+| Web / macOS / Windows / Linux | 🚧 Planned | Core pooling is pure Dart and media_kit plays on these platforms; the native `DeviceMonitor` (thermal/memory) bridge is not yet implemented. See the [roadmap](#roadmap). |
+
+### Roadmap
+
+- **Web & desktop support** — graceful no-op fallback for the native device monitor so the plugin runs everywhere media_kit does, without thermal/memory throttling.
+- **`video_player`-compatible adapter** — an optional adapter backed by [`video_player`](https://pub.dev/packages/video_player) so you can swap in alternative backends like [`fvp`](https://pub.dev/packages/fvp) instead of media_kit.
 
 ### Minimum Requirements
 
