@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.3.3
+
+### Web & Desktop
+- **Graceful web and desktop support** — the pool no longer relies on the
+  Android/iOS-only native device-monitoring bridge being present. A new
+  `NoOpVideoPoolPlatform` is selected automatically (`defaultVideoPoolPlatform()`)
+  on web, macOS, Windows, and Linux, so `VideoPoolScope` runs everywhere the
+  underlying player (media_kit) plays. Native thermal/memory throttling and
+  system audio-focus management remain Android/iOS only; on other platforms the
+  pool simply operates at its nominal state.
+- **Hardened `AudioFocusManager`** — `requestFocus()`/`releaseFocus()` now
+  swallow `MissingPluginException` (treating focus as granted) so a direct call
+  on a platform without an audio-focus implementation never throws.
+- Exported `NoOpVideoPoolPlatform` and `defaultVideoPoolPlatform()`.
+
+> Note: pub.dev platform badges still list Android/iOS (the package declares
+> native plugin platforms for those). Declaring web/desktop as first-class
+> plugin platforms is tracked for a future release.
+
 ## 0.3.2
 
 ### Bug Fixes

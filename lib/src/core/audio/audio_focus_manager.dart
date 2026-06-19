@@ -46,14 +46,24 @@ class AudioFocusManager with WidgetsBindingObserver {
   /// On Android this calls AudioManager.requestAudioFocus.
   Future<void> requestFocus() async {
     if (_disposed) return;
-    _hasFocus = await _platform.requestAudioFocus();
+    try {
+      _hasFocus = await _platform.requestAudioFocus();
+    } catch (_) {
+      // No audio-focus implementation on this platform (web/desktop).
+      // Treat focus as granted so playback proceeds normally.
+      _hasFocus = true;
+    }
   }
 
   /// Release system audio focus.
   Future<void> releaseFocus() async {
     if (_disposed) return;
     if (_hasFocus) {
-      await _platform.releaseAudioFocus();
+      try {
+        await _platform.releaseAudioFocus();
+      } catch (_) {
+        // No audio-focus implementation on this platform (web/desktop).
+      }
       _hasFocus = false;
     }
   }

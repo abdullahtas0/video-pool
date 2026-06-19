@@ -278,11 +278,12 @@ This package uses [media_kit](https://pub.dev/packages/media_kit) for video play
 |----------|--------|-------|
 | Android | ✅ Supported | Full native monitoring (thermal, memory, audio focus) |
 | iOS | ✅ Supported | Full native monitoring (thermal, memory, audio focus) |
-| Web / macOS / Windows / Linux | 🚧 Planned | Core pooling is pure Dart and media_kit plays on these platforms; the native `DeviceMonitor` (thermal/memory) bridge is not yet implemented. See the [roadmap](#roadmap). |
+| Web / macOS / Windows / Linux | ✅ Runs | Core pooling is pure Dart and media_kit plays on these platforms. A no-op platform is selected automatically, so the pool runs everywhere — it just forgoes native thermal/memory throttling and audio-focus management (Android/iOS only). |
+
+> pub.dev platform badges list Android/iOS because those are the declared native plugin platforms. The package still imports and runs on web and desktop.
 
 ### Roadmap
 
-- **Web & desktop support** — graceful no-op fallback for the native device monitor so the plugin runs everywhere media_kit does, without thermal/memory throttling.
 - **`video_player`-compatible adapter** — an optional adapter backed by [`video_player`](https://pub.dev/packages/video_player) so you can swap in alternative backends like [`fvp`](https://pub.dev/packages/fvp) instead of media_kit.
 
 ### Minimum Requirements

@@ -9,7 +9,7 @@ import '../core/models/video_source.dart';
 import '../core/pool/decoder_budget.dart';
 import '../core/pool/pool_config.dart';
 import '../core/pool/video_pool.dart';
-import '../platform/device_monitor.dart';
+import '../platform/default_platform.dart';
 import '../platform/device_status.dart';
 import '../platform/platform_interface.dart';
 import 'video_pool_provider.dart';
@@ -85,7 +85,7 @@ class _VideoPoolScopeState extends State<VideoPoolScope>
   void initState() {
     super.initState();
 
-    _platform = widget.platform ?? DeviceMonitor();
+    _platform = widget.platform ?? defaultVideoPoolPlatform();
 
     _pool = VideoPool(
       config: widget.config,

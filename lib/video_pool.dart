@@ -53,6 +53,8 @@ export 'src/platform/device_capabilities.dart';
 export 'src/platform/device_status.dart';
 export 'src/platform/platform_interface.dart';
 export 'src/platform/device_monitor.dart';
+export 'src/platform/noop_platform.dart';
+export 'src/platform/default_platform.dart';
 
 // Audio
 export 'src/core/audio/audio_focus_manager.dart';
