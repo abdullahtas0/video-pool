@@ -18,6 +18,7 @@ export 'src/core/memory/lru_cache.dart';
 export 'src/core/adapter/player_adapter.dart';
 export 'src/core/adapter/player_state.dart';
 export 'src/core/adapter/media_kit_adapter.dart';
+export 'src/core/adapter/video_player_adapter.dart';
 
 // Cache
 export 'src/core/cache/bandwidth_estimator.dart';

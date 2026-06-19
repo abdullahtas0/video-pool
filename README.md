@@ -56,7 +56,7 @@ VideoPoolScope(
 
 ```yaml
 dependencies:
-  video_pool: ^0.4.0
+  video_pool: ^0.5.0
   media_kit: ^1.1.11
   media_kit_video: ^1.2.5
   media_kit_libs_video: ^1.0.5
@@ -251,6 +251,45 @@ VideoPoolConfig(
 )
 ```
 
+## Swappable Player Backends
+
+The pool talks to players through the `PlayerAdapter` interface, so you can
+choose the playback backend:
+
+| Adapter | Backend | Notes |
+|---------|---------|-------|
+| `MediaKitAdapter` (default) | [media_kit](https://pub.dev/packages/media_kit) | Reuses the decoder pipeline via `swapSource` — lowest-latency transitions. HLS fast-start tuning built in. |
+| `VideoPlayerAdapter` | [video_player](https://pub.dev/packages/video_player) | Uses the standard `video_player` interface, so you can swap in any compatible backend — e.g. [`fvp`](https://pub.dev/packages/fvp) (libmpv), ExoPlayer, or AVPlayer. |
+
+Pick the adapter in `adapterFactory`:
+
+```dart
+VideoPoolScope(
+  config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 1),
+  adapterFactory: (_) => VideoPlayerAdapter(), // instead of MediaKitAdapter()
+  sourceResolver: (index) => videos[index],
+  child: VideoFeedView(sources: videos),
+)
+```
+
+To route `video_player` (and therefore `VideoPlayerAdapter`) through **fvp**,
+call `fvp.registerWith()` once at app start — no other change is required:
+
+```dart
+import 'package:fvp/fvp.dart' as fvp;
+
+void main() {
+  fvp.registerWith(); // video_player now uses libmpv via fvp
+  runApp(const MyApp());
+}
+```
+
+> **Swap trade-off:** `video_player`'s controller has no in-place source swap, so
+> `VideoPlayerAdapter.swapSource()` disposes the controller and creates a fresh
+> one (the decoder is recreated, not reused). The video surface element stays
+> mounted across swaps. `MediaKitAdapter` remains the lower-latency default;
+> reach for `VideoPlayerAdapter` when you need a specific `video_player` backend.
+
 ## Thermal & Memory Behavior
 
 The pool dynamically adapts to device conditions:
@@ -283,9 +322,8 @@ This package uses [media_kit](https://pub.dev/packages/media_kit) for video play
 
 > The package selects platform implementations at compile time, so the same `import 'package:video_pool/video_pool.dart'` works everywhere. On web and desktop the disk cache and native device monitor become no-ops; pooling, visibility lifecycle, and playback still work. pub.dev platform badges reflect the declared native plugin platforms (Android/iOS).
 
-### Roadmap
-
-- **`video_player`-compatible adapter** — an optional adapter backed by [`video_player`](https://pub.dev/packages/video_player) so you can swap in alternative backends like [`fvp`](https://pub.dev/packages/fvp) instead of media_kit.
+> Want to swap the playback backend (e.g. fvp instead of media_kit)? See
+> [Swappable Player Backends](#swappable-player-backends).
 
 ### Minimum Requirements
 

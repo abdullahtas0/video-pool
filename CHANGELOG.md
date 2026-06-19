@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.5.0
+
+### New Features
+- **`VideoPlayerAdapter`** — a `PlayerAdapter` backed by the official
+  [`video_player`](https://pub.dev/packages/video_player) plugin. Because it
+  drives the standard `video_player` platform interface, you can now swap the
+  playback backend (e.g. [`fvp`](https://pub.dev/packages/fvp) for libmpv,
+  ExoPlayer, or AVPlayer) instead of media_kit — just pass
+  `adapterFactory: (_) => VideoPlayerAdapter()`. `MediaKitAdapter` remains the
+  default.
+  - Maps `video_player`'s `VideoPlayerValue` to the pool's `PlayerState`
+    (preparing / playing / buffering / paused / error), exposes a stable video
+    surface that rebinds across swaps, and derives the memory estimate from the
+    video size.
+  - **Swap semantics:** `video_player` has no in-place source swap, so
+    `swapSource()` disposes the controller and creates a fresh one (decoder
+    recreated, not reused) — the documented trade-off of the standard interface.
+  - Hardened against failed initialization: a controller that throws during
+    `initialize()` is released without awaiting its (never-completing) dispose,
+    so it can't hang the pool.
+- Added `video_player` as a dependency. The package still compiles on web
+  (`dart:io` use is guarded by `kIsWeb`).
+
+### Testing
+- Added `VideoPlayerAdapter` unit tests (state mapping, recreate-on-swap,
+  controls, error handling, widget rendering) and an end-to-end integration
+  test driving a real `VideoPlayerAdapter` through `VideoPool` via a fake
+  platform. 269 tests total.
+
 ## 0.4.0
 
 ### Web Support
