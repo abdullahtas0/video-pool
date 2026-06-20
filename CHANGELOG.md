@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.5.2
+
+### Example
+- **Fixed the example's sample video URLs.** The previous Google
+  `gtv-videos-bucket` URLs now return HTTP 403, so the demo could not load any
+  video. Replaced them with short, CORS-enabled CC0 clips (Flutter's asset CDN
+  and MDN) that play on every platform. Verified live on web: the feed now plays
+  real video with no 403/CORS errors.
+
 ## 0.5.1
 
 ### Platform Declaration
