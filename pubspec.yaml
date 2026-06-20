@@ -1,6 +1,6 @@
 name: video_pool
 description: Video orchestration for Flutter - controller pooling, instance reuse, visibility lifecycle, thermal throttling, disk caching, and ready-to-use widgets.
-version: 0.5.0
+version: 0.5.1
 homepage: https://github.com/abdullahtas0/video-pool
 repository: https://github.com/abdullahtas0/video-pool
 issue_tracker: https://github.com/abdullahtas0/video-pool/issues
@@ -23,9 +23,20 @@ flutter:
         pluginClass: VideoPoolPlugin
       ios:
         pluginClass: VideoPoolPlugin
+      macos:
+        dartPluginClass: VideoPoolDesktopPlugin
+      windows:
+        dartPluginClass: VideoPoolDesktopPlugin
+      linux:
+        dartPluginClass: VideoPoolDesktopPlugin
+      web:
+        pluginClass: VideoPoolWebPlugin
+        fileName: src/platform/video_pool_web.dart
 
 dependencies:
   flutter:
+    sdk: flutter
+  flutter_web_plugins:
     sdk: flutter
   crypto: ^3.0.3
   media_kit: ^1.1.11

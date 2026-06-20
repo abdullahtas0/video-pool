@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.5.1
+
+### Platform Declaration
+- **Declared web, macOS, Windows, and Linux as supported plugin platforms** so
+  pub.dev shows all six platform badges (previously only Android/iOS). Android
+  and iOS keep their native plugin classes; web uses a no-op web plugin
+  registrant and desktop uses a no-op `dartPluginClass` — no native code is
+  needed on those platforms because the device monitor and disk cache already
+  fall back to no-ops there. Verified with `pana` (6 / 6 platforms) and by
+  building the example for web and macOS.
+- Added `flutter_web_plugins` (Flutter SDK) as a dependency for the web
+  registrant.
+
 ## 0.5.0
 
 ### New Features

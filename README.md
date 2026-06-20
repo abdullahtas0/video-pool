@@ -56,7 +56,7 @@ VideoPoolScope(
 
 ```yaml
 dependencies:
-  video_pool: ^0.5.0
+  video_pool: ^0.5.1
   media_kit: ^1.1.11
   media_kit_video: ^1.2.5
   media_kit_libs_video: ^1.0.5
@@ -320,7 +320,7 @@ This package uses [media_kit](https://pub.dev/packages/media_kit) for video play
 | macOS / Windows / Linux | ✅ Supported | Pooling + playback work via media_kit. A no-op device monitor is selected automatically (no native thermal/memory throttling or audio focus — those are Android/iOS only). Verified end-to-end on macOS (builds, runs, pool active, no `MissingPluginException`). |
 | Web | ✅ Supported | Compiles and runs via conditional compilation: the HLS `setProperty` tuning and the `dart:io` disk cache / thumbnail extractor fall back to no-op web stubs, so the pool streams network URLs directly. Verified end-to-end in Chrome (builds, runs, pool reconciles, no errors). |
 
-> The package selects platform implementations at compile time, so the same `import 'package:video_pool/video_pool.dart'` works everywhere. On web and desktop the disk cache and native device monitor become no-ops; pooling, visibility lifecycle, and playback still work. pub.dev platform badges reflect the declared native plugin platforms (Android/iOS).
+> The package selects platform implementations at compile time, so the same `import 'package:video_pool/video_pool.dart'` works everywhere. On web and desktop the disk cache and native device monitor become no-ops; pooling, visibility lifecycle, and playback still work. The package declares all six platforms (Android, iOS, web, macOS, Windows, Linux) — native channels back Android/iOS, and the rest use pure-Dart fallbacks.
 
 > Want to swap the playback backend (e.g. fvp instead of media_kit)? See
 > [Swappable Player Backends](#swappable-player-backends).
