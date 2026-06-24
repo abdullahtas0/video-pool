@@ -33,8 +33,7 @@ void main() {
       expect(second, lessThan(2 * 1024 * 1024));
 
       // Exact: 0.3 * 2097152 + 0.7 * 1048576 = 629145.6 + 734003.2 = 1363148.8 ≈ 1363149
-      final expected =
-          (0.3 * 2 * 1024 * 1024 + 0.7 * 1024 * 1024).round();
+      final expected = (0.3 * 2 * 1024 * 1024 + 0.7 * 1024 * 1024).round();
       expect(second, expected);
     });
 

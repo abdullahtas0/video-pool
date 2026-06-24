@@ -2,6 +2,13 @@
 
 Enterprise video orchestration for Flutter. Build TikTok, Reels, and Instagram-style video feeds with intelligent controller pooling, zero-jank scrolling, and automatic device protection.
 
+[![pub package](https://img.shields.io/pub/v/video_pool.svg)](https://pub.dev/packages/video_pool)
+[![pub points](https://img.shields.io/pub/points/video_pool)](https://pub.dev/packages/video_pool/score)
+[![likes](https://img.shields.io/pub/likes/video_pool)](https://pub.dev/packages/video_pool/score)
+[![CI](https://github.com/abdullahtas0/video-pool/actions/workflows/ci.yml/badge.svg)](https://github.com/abdullahtas0/video-pool/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+**▶ [Try the live web demo](https://abdullahtas0.github.io/video-pool/)** — a real feed running in your browser.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/abdullahtas0/video-pool/master/assets/demo.gif" alt="video_pool demo" width="280"/>
@@ -56,7 +63,7 @@ VideoPoolScope(
 
 ```yaml
 dependencies:
-  video_pool: ^0.5.2
+  video_pool: ^0.5.3
   media_kit: ^1.1.11
   media_kit_video: ^1.2.5
   media_kit_libs_video: ^1.0.5
@@ -356,8 +363,35 @@ See the [`example/`](example/) directory for three runnable demos:
 
 ```bash
 cd example
-flutter run
+flutter run            # full showcase (lib/main.dart)
+flutter run -t lib/minimal_example.dart   # the 5-line minimal feed
 ```
+
+## How does it compare?
+
+`video_pool` is not a player or a "play one video" widget — it's the
+**orchestration layer** for feeds of *many* videos. Use whatever fits:
+
+| Package | Best for | vs. video_pool |
+|---------|----------|----------------|
+| [`video_player`](https://pub.dev/packages/video_player) / [`chewie`](https://pub.dev/packages/chewie) | A single video or a player with controls | No pooling — one controller per video; rebuilding a feed re-creates decoders on every scroll. `video_pool` can *drive* `video_player` via `VideoPlayerAdapter`. |
+| [`better_player`](https://pub.dev/packages/better_player) | A feature-rich single player (HLS/DRM, subtitles) | Player-centric, not feed-centric. No fixed pool, no visibility-driven reconciliation, no thermal/memory orchestration across a list. |
+| [`preload_page_view`](https://pub.dev/packages/preload_page_view) | Pre-building adjacent pages in a `PageView` | Solves widget pre-building, not *player* lifecycle. You still create/dispose controllers yourself. `video_pool` manages the players. |
+| **video_pool** | TikTok/Reels/Instagram feeds of many videos | Fixed pool reused via `swapSource()`, visibility lifecycle, thermal/memory throttling, disk cache, swappable backend (media_kit **or** video_player/fvp). |
+
+Rule of thumb: one video → `video_player`/`chewie`; a scrollable feed of videos →
+`video_pool`.
+
+## Roadmap
+
+- ✅ Web & desktop support (0.4.0)
+- ✅ `video_player`-compatible adapter for fvp / ExoPlayer / AVPlayer (0.5.0)
+- ⏳ WebAssembly (WASM) compatibility — currently blocked upstream by
+  `video_player`'s unconditional `dart:io` import; tracked.
+- ⏳ Adaptive bitrate hooks and subtitle pass-through (gathering interest)
+
+Ideas and feedback are welcome — open an issue or see
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

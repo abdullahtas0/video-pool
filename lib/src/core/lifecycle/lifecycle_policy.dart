@@ -58,6 +58,9 @@ class ReconciliationPlan {
 /// status update. Advanced users can provide a custom implementation to
 /// change how players are allocated across visible slots.
 abstract class LifecyclePolicy {
+  /// Const constructor so implementations can be `const`.
+  const LifecyclePolicy();
+
   /// Evaluate current state and produce a plan of actions.
   ///
   /// - [primaryIndex]: the slot index that is most visible / focused.

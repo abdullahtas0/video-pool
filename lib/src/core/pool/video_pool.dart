@@ -277,8 +277,8 @@ class VideoPool {
 
     // Serialize reconciliation: wait for previous run to finish, then
     // only run if no newer call has superseded us.
-    _activeReconciliation = (_activeReconciliation ?? Future<void>.value())
-        .then((_) {
+    _activeReconciliation =
+        (_activeReconciliation ?? Future<void>.value()).then((_) {
       if (version == _reconciliationVersion && !_disposed) {
         return _reconcile(primaryIndex, visibilityRatios);
       }
@@ -414,7 +414,9 @@ class VideoPool {
             await existingEntry.adapter.pause();
           } catch (e, st) {
             _logger.error(
-              'Pause preloaded entry failed for ${existingEntry.id}', e, st,
+              'Pause preloaded entry failed for ${existingEntry.id}',
+              e,
+              st,
             );
           }
           existingEntry.lifecycleNotifier.value = LifecycleState.paused;
@@ -506,7 +508,8 @@ class VideoPool {
   ///
   /// The adapter is NOT disposed — it remains available for reuse.
   Future<void> _releaseEntry(PoolEntry entry) async {
-    _logger.debug('Releasing entry ${entry.id} from index ${entry.assignedIndex}');
+    _logger
+        .debug('Releasing entry ${entry.id} from index ${entry.assignedIndex}');
 
     // Unlock cache key before releasing.
     if (_filePreloadManager != null && entry.currentSource != null) {
@@ -712,11 +715,13 @@ class VideoPool {
     _emit(ThrottleEvent(
       thermalLevel: thermalLevel,
       memoryPressure: memoryPressure,
-      effectiveMaxConcurrent: _orchestrator.computeEffectiveLimits(
-        config: config,
-        thermalLevel: thermalLevel,
-        memoryPressure: memoryPressure,
-      ).maxConcurrent,
+      effectiveMaxConcurrent: _orchestrator
+          .computeEffectiveLimits(
+            config: config,
+            thermalLevel: thermalLevel,
+            memoryPressure: memoryPressure,
+          )
+          .maxConcurrent,
     ));
 
     _memoryManager.scaleBudget(memoryPressure);
@@ -732,8 +737,8 @@ class VideoPool {
       }
       // Serialize emergency flush through the reconciliation chain to
       // prevent concurrent modification of entries.
-      _activeReconciliation = (_activeReconciliation ?? Future<void>.value())
-          .then((_) {
+      _activeReconciliation =
+          (_activeReconciliation ?? Future<void>.value()).then((_) {
         if (!_disposed) return _emergencyFlush();
       });
     }
@@ -839,7 +844,8 @@ class VideoPool {
     // Release tokens for disposed entries back to the shared budget.
     if (_decoderBudget != null && toRemove.isNotEmpty) {
       _decoderBudget.releaseTokens(_poolId, toRemove.length);
-      _grantedTokens = (_grantedTokens - toRemove.length).clamp(0, _grantedTokens);
+      _grantedTokens =
+          (_grantedTokens - toRemove.length).clamp(0, _grantedTokens);
     }
 
     _emit(EmergencyFlushEvent(

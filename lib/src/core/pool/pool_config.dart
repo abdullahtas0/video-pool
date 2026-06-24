@@ -53,7 +53,7 @@ class VideoPoolConfig {
         assert(
           preloadCount < maxConcurrent,
           'preloadCount must be less than maxConcurrent '
-              '(at least 1 slot is needed for the primary player)',
+          '(at least 1 slot is needed for the primary player)',
         ),
         assert(memoryBudgetBytes > 0, 'memoryBudgetBytes must be positive'),
         assert(

@@ -59,8 +59,7 @@ void main() {
 
     // One token should have been revoked from the pool with most tokens.
     // Both have 2, so one of them gets revoked to 1.
-    final totalAllocated =
-        budget.allocations.values.fold(0, (a, b) => a + b);
+    final totalAllocated = budget.allocations.values.fold(0, (a, b) => a + b);
     expect(totalAllocated, 3);
   });
 

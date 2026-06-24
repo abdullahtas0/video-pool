@@ -127,7 +127,8 @@ class _VideoFeedViewState extends State<VideoFeedView> {
           final dt = now.difference(_lastPositionTime).inMilliseconds;
           if (dt > 0) {
             final velocity = (notification.metrics.pixels - _lastPosition) /
-                dt * 1000; // pixels/sec
+                dt *
+                1000; // pixels/sec
             if (velocity.abs() > 0) {
               final pool = VideoPoolProvider.maybeOf(context);
               pool?.onScrollUpdate(

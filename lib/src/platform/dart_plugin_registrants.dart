@@ -6,6 +6,9 @@
 /// empty registrant exists only so the package can declare desktop support
 /// in `pubspec.yaml` (and therefore advertise it on pub.dev).
 class VideoPoolDesktopPlugin {
+  // Not instantiable — this registrant is used only via [registerWith].
+  VideoPoolDesktopPlugin._();
+
   /// Called automatically by Flutter's generated Dart plugin registrant.
   static void registerWith() {}
 }

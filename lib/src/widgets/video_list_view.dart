@@ -101,8 +101,7 @@ class _VideoListViewState extends State<VideoListView> {
     final pool = VideoPoolProvider.maybeOf(context);
     if (pool == null) return false;
 
-    final extent = widget.itemExtent ??
-        notification.metrics.viewportDimension;
+    final extent = widget.itemExtent ?? notification.metrics.viewportDimension;
 
     final update = _visibilityTracker.computeVisibility(
       notification: notification,
@@ -133,8 +132,8 @@ class _VideoListViewState extends State<VideoListView> {
     } else if (notification is ScrollEndNotification && _isDragging) {
       final dt = DateTime.now().difference(_dragStartTime).inMilliseconds;
       if (dt > 0) {
-        final velocity = (notification.metrics.pixels - _dragStartPosition) /
-            dt * 1000;
+        final velocity =
+            (notification.metrics.pixels - _dragStartPosition) / dt * 1000;
         if (velocity.abs() > 0) {
           pool.onScrollUpdate(
             position: notification.metrics.pixels,

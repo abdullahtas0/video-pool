@@ -388,8 +388,9 @@ class _ProgressBar extends StatelessWidget {
       builder: (context, state, _) {
         final pos = state.position;
         final dur = state.duration;
-        final progress =
-            dur.inMilliseconds > 0 ? pos.inMilliseconds / dur.inMilliseconds : 0.0;
+        final progress = dur.inMilliseconds > 0
+            ? pos.inMilliseconds / dur.inMilliseconds
+            : 0.0;
 
         return LinearProgressIndicator(
           value: progress.clamp(0.0, 1.0),

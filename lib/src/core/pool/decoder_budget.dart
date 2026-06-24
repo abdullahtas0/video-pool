@@ -11,6 +11,9 @@ import '../events/pool_event.dart';
 /// The abstraction allows dependency injection for testing and alternative
 /// allocation strategies (e.g. priority-based, weighted).
 abstract class DecoderBudget {
+  /// Const constructor so implementations can be `const`.
+  const DecoderBudget();
+
   /// Request [desired] tokens for [poolId]. Returns granted count (<= desired).
   int requestTokens(String poolId, int desired);
 

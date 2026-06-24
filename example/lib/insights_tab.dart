@@ -43,18 +43,15 @@ class _InsightsTabState extends State<InsightsTab> {
     _stats = widget.pool.statistics;
     _sub = widget.pool.eventStream.listen(_onEvent);
     // Throttle UI updates to max ~5 per second
-    _throttleTimer = Timer.periodic(
-      const Duration(milliseconds: 200),
-      (_) {
-        if (_dirty && mounted) {
-          _dirty = false;
-          setState(() {
-            _metrics = widget.pool.metrics;
-            _stats = widget.pool.statistics;
-          });
-        }
-      },
-    );
+    _throttleTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
+      if (_dirty && mounted) {
+        _dirty = false;
+        setState(() {
+          _metrics = widget.pool.metrics;
+          _stats = widget.pool.statistics;
+        });
+      }
+    });
   }
 
   @override
@@ -84,37 +81,35 @@ class _InsightsTabState extends State<InsightsTab> {
           entryId: entryId,
           assignedIndex: toIndex,
           state: 'READY',
-          );
-        case LifecycleEvent(:final entryId, :final index, :final toState):
-          _entries[entryId] = _EntryModel(
-            entryId: entryId,
-            assignedIndex: index,
-            state: toState.name.toUpperCase(),
-          );
-        case ReconcileEvent(:final primaryIndex):
-          // Mark the primary entry.
-          for (final entry in _entries.values) {
-            entry.isPrimary = entry.assignedIndex == primaryIndex;
-          }
-        case ThrottleEvent(
-            :final thermalLevel,
-            :final memoryPressure,
-            :final effectiveMaxConcurrent,
-          ):
-          _thermalLevel = thermalLevel;
-          _memoryPressure = memoryPressure;
-          _effectiveMaxConcurrent = effectiveMaxConcurrent;
-        case EmergencyFlushEvent(:final survivorEntryId, :final disposedCount):
-          // Remove disposed entries.
-          _entries.removeWhere(
-            (id, _) => id != survivorEntryId,
-          );
-          if (disposedCount > 0) {
-            // Keep only the survivor.
-          }
-        case _:
-          break;
-      }
+        );
+      case LifecycleEvent(:final entryId, :final index, :final toState):
+        _entries[entryId] = _EntryModel(
+          entryId: entryId,
+          assignedIndex: index,
+          state: toState.name.toUpperCase(),
+        );
+      case ReconcileEvent(:final primaryIndex):
+        // Mark the primary entry.
+        for (final entry in _entries.values) {
+          entry.isPrimary = entry.assignedIndex == primaryIndex;
+        }
+      case ThrottleEvent(
+        :final thermalLevel,
+        :final memoryPressure,
+        :final effectiveMaxConcurrent,
+      ):
+        _thermalLevel = thermalLevel;
+        _memoryPressure = memoryPressure;
+        _effectiveMaxConcurrent = effectiveMaxConcurrent;
+      case EmergencyFlushEvent(:final survivorEntryId, :final disposedCount):
+        // Remove disposed entries.
+        _entries.removeWhere((id, _) => id != survivorEntryId);
+        if (disposedCount > 0) {
+          // Keep only the survivor.
+        }
+      case _:
+        break;
+    }
   }
 
   @override
@@ -150,10 +145,7 @@ class _InsightsTabState extends State<InsightsTab> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: _MetricsGrid(
-                  metrics: _metrics,
-                  stats: _stats,
-                ),
+                child: _MetricsGrid(metrics: _metrics, stats: _stats),
               ),
             ),
 
@@ -184,9 +176,7 @@ class _InsightsTabState extends State<InsightsTab> {
             const SliverToBoxAdapter(
               child: _SectionHeader(title: 'Event Stream'),
             ),
-            SliverToBoxAdapter(
-              child: _EventStreamPanel(events: _recentEvents),
-            ),
+            SliverToBoxAdapter(child: _EventStreamPanel(events: _recentEvents)),
 
             // Bottom padding
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
@@ -285,10 +275,7 @@ class _MetricCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A2E),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withValues(alpha: 0.2),
-          width: 1,
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -330,10 +317,7 @@ class _MetricCard extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _PoolEntriesRow extends StatelessWidget {
-  const _PoolEntriesRow({
-    required this.entries,
-    required this.maxConcurrent,
-  });
+  const _PoolEntriesRow({required this.entries, required this.maxConcurrent});
 
   final List<_EntryModel> entries;
   final int maxConcurrent;
@@ -505,11 +489,7 @@ class _DeviceStatusRow extends StatelessWidget {
                 color: _thermalColor(thermalLevel),
               ),
             ),
-            Container(
-              width: 1,
-              height: 36,
-              color: const Color(0xFF2A2A3E),
-            ),
+            Container(width: 1, height: 36, color: const Color(0xFF2A2A3E)),
             Expanded(
               child: _StatusItem(
                 icon: Icons.memory,
@@ -518,11 +498,7 @@ class _DeviceStatusRow extends StatelessWidget {
                 color: _memoryColor(memoryPressure),
               ),
             ),
-            Container(
-              width: 1,
-              height: 36,
-              color: const Color(0xFF2A2A3E),
-            ),
+            Container(width: 1, height: 36, color: const Color(0xFF2A2A3E)),
             Expanded(
               child: _StatusItem(
                 icon: Icons.tune,
@@ -637,10 +613,7 @@ class _EventStreamPanel extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF0D0D1A),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: const Color(0xFF1A1A2E),
-            width: 1,
-          ),
+          border: Border.all(color: const Color(0xFF1A1A2E), width: 1),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
@@ -725,45 +698,45 @@ class _EventRecord {
   factory _EventRecord.fromEvent(PoolEvent event) {
     final (label, color) = switch (event) {
       SwapEvent e => (
-          'SWAP  #${e.entryId} -> idx ${e.toIndex} (${e.durationMs}ms${e.isWarmStart ? ", warm" : ""})',
-          const Color(0xFF4CAF50),
-        ),
+        'SWAP  #${e.entryId} -> idx ${e.toIndex} (${e.durationMs}ms${e.isWarmStart ? ", warm" : ""})',
+        const Color(0xFF4CAF50),
+      ),
       ReconcileEvent e => (
-          'RECON p=${e.primaryIndex} play=${e.playCount} pre=${e.preloadCount} rel=${e.releaseCount}',
-          const Color(0xFF81C784),
-        ),
+        'RECON p=${e.primaryIndex} play=${e.playCount} pre=${e.preloadCount} rel=${e.releaseCount}',
+        const Color(0xFF81C784),
+      ),
       ThrottleEvent e => (
-          'THROT thermal=${e.thermalLevel.name} mem=${e.memoryPressure.name} max=${e.effectiveMaxConcurrent}',
-          const Color(0xFFFFEB3B),
-        ),
+        'THROT thermal=${e.thermalLevel.name} mem=${e.memoryPressure.name} max=${e.effectiveMaxConcurrent}',
+        const Color(0xFFFFEB3B),
+      ),
       CacheEvent e => (
-          'CACHE ${e.action.name} ${e.cacheKey.length > 20 ? '${e.cacheKey.substring(0, 20)}...' : e.cacheKey}',
-          const Color(0xFF2196F3),
-        ),
+        'CACHE ${e.action.name} ${e.cacheKey.length > 20 ? '${e.cacheKey.substring(0, 20)}...' : e.cacheKey}',
+        const Color(0xFF2196F3),
+      ),
       BandwidthSampleEvent e => (
-          'BW    ${(e.estimatedBytesPerSec / 1024).toStringAsFixed(0)} KB/s (${e.durationMs}ms)',
-          const Color(0xFF29B6F6),
-        ),
+        'BW    ${(e.estimatedBytesPerSec / 1024).toStringAsFixed(0)} KB/s (${e.durationMs}ms)',
+        const Color(0xFF29B6F6),
+      ),
       PredictionEvent e => (
-          'PRED  idx=${e.predictedIndex} conf=${e.confidence.toStringAsFixed(2)}${e.actualIndex != null ? " actual=${e.actualIndex}" : ""}',
-          const Color(0xFFE040FB),
-        ),
+        'PRED  idx=${e.predictedIndex} conf=${e.confidence.toStringAsFixed(2)}${e.actualIndex != null ? " actual=${e.actualIndex}" : ""}',
+        const Color(0xFFE040FB),
+      ),
       LifecycleEvent e => (
-          'LIFE  #${e.entryId} ${e.fromState.name}->${e.toState.name}',
-          const Color(0xFF80CBC4),
-        ),
+        'LIFE  #${e.entryId} ${e.fromState.name}->${e.toState.name}',
+        const Color(0xFF80CBC4),
+      ),
       EmergencyFlushEvent e => (
-          'FLUSH survivor=${e.survivorEntryId} disposed=${e.disposedCount}',
-          const Color(0xFFFF5722),
-        ),
+        'FLUSH survivor=${e.survivorEntryId} disposed=${e.disposedCount}',
+        const Color(0xFFFF5722),
+      ),
       ErrorEvent e => (
-          'ERR   [${e.code}] ${e.message}',
-          const Color(0xFFF44336),
-        ),
+        'ERR   [${e.code}] ${e.message}',
+        const Color(0xFFF44336),
+      ),
       TokenEvent e => (
-          'TOKEN ${e.runtimeType} pool=${e.poolId}',
-          const Color(0xFF9E9E9E),
-        ),
+        'TOKEN ${e.runtimeType} pool=${e.poolId}',
+        const Color(0xFF9E9E9E),
+      ),
     };
 
     return _EventRecord(label: label, color: color);

@@ -65,9 +65,7 @@ class MemoryManager {
   /// Returns entries ordered from least recently used to most recent.
   List<PoolEntry> getEvictionCandidates(int targetBytes) {
     // Sort idle entries by lastUsed (oldest first).
-    final idleEntries = _entries.values
-        .where((e) => e.isIdle)
-        .toList()
+    final idleEntries = _entries.values.where((e) => e.isIdle).toList()
       ..sort((a, b) => a.lastUsed.compareTo(b.lastUsed));
 
     final candidates = <PoolEntry>[];
@@ -114,9 +112,7 @@ class MemoryManager {
   List<PoolEntry> emergencyFlush(int? primaryEntryId) {
     _logger.warning('Emergency flush! Keeping only entry $primaryEntryId');
 
-    return _entries.values
-        .where((e) => e.id != primaryEntryId)
-        .toList();
+    return _entries.values.where((e) => e.id != primaryEntryId).toList();
   }
 
   /// Reset effective budget to the base budget.

@@ -29,8 +29,8 @@ class DeviceStatus {
     return DeviceStatus(
       thermalLevel: ThermalLevel.values[map['thermalLevel'] as int? ?? 0],
       availableMemoryBytes: map['availableMemoryBytes'] as int? ?? 0,
-      memoryPressureLevel: MemoryPressureLevel
-          .values[map['memoryPressureLevel'] as int? ?? 0],
+      memoryPressureLevel:
+          MemoryPressureLevel.values[map['memoryPressureLevel'] as int? ?? 0],
       batteryLevel: (map['batteryLevel'] as num?)?.toDouble() ?? 1.0,
       isLowPowerMode: map['isLowPowerMode'] as bool? ?? false,
     );
@@ -100,8 +100,7 @@ class DeviceStatus {
       );
 
   @override
-  String toString() =>
-      'DeviceStatus(thermalLevel: $thermalLevel, '
+  String toString() => 'DeviceStatus(thermalLevel: $thermalLevel, '
       'availableMemoryBytes: $availableMemoryBytes, '
       'memoryPressureLevel: $memoryPressureLevel, '
       'batteryLevel: $batteryLevel, '

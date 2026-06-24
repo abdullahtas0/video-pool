@@ -32,8 +32,7 @@ void main() {
       expect(find.text('Network error occurred'), findsOneWidget);
     });
 
-    testWidgets('shows retry button when onRetry is provided',
-        (tester) async {
+    testWidgets('shows retry button when onRetry is provided', (tester) async {
       var retryCount = 0;
 
       await tester.pumpWidget(

@@ -7,6 +7,9 @@ import 'device_status.dart';
 /// and system audio focus management. Implementations use platform channels
 /// to communicate with iOS (Swift) and Android (Kotlin) native code.
 abstract class VideoPoolPlatform {
+  /// Const constructor so implementations can be `const`.
+  const VideoPoolPlatform();
+
   /// Queries device hardware capabilities (one-time call).
   ///
   /// Returns information about hardware decoder count, supported codecs,

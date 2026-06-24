@@ -69,9 +69,9 @@ class VideoSource {
   int? get estimatedMemoryBytes {
     if (resolutionHint == null) return null;
     return switch (resolutionHint!) {
-      ResolutionHint.hd720 => 1280 * 720 * 4 * 3,     // ~11 MB
-      ResolutionHint.hd1080 => 1920 * 1080 * 4 * 3,   // ~24 MB
-      ResolutionHint.uhd4k => 3840 * 2160 * 4 * 3,    // ~95 MB
+      ResolutionHint.hd720 => 1280 * 720 * 4 * 3, // ~11 MB
+      ResolutionHint.hd1080 => 1920 * 1080 * 4 * 3, // ~24 MB
+      ResolutionHint.uhd4k => 3840 * 2160 * 4 * 3, // ~95 MB
     };
   }
 
@@ -107,7 +107,8 @@ class VideoSource {
   }
 
   @override
-  int get hashCode => Object.hash(url, cacheKey, thumbnailUrl, type, resolutionHint);
+  int get hashCode =>
+      Object.hash(url, cacheKey, thumbnailUrl, type, resolutionHint);
 
   @override
   String toString() =>

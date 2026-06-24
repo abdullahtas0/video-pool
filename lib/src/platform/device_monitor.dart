@@ -34,8 +34,7 @@ class DeviceMonitor implements VideoPoolPlatform {
 
   @override
   Future<DeviceCapabilities> getCapabilities() async {
-    final result =
-        await _methodChannel.invokeMethod<Map<dynamic, dynamic>>(
+    final result = await _methodChannel.invokeMethod<Map<dynamic, dynamic>>(
       'getCapabilities',
     );
     if (result == null) {

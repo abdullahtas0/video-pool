@@ -22,14 +22,14 @@ void main() {
       final buffer = EventRingBuffer(capacity: 10);
 
       // 3 hits + 1 miss = 0.75
-      buffer.add(CacheEvent(
-          cacheKey: 'a', action: CacheAction.hit, sizeBytes: 100));
-      buffer.add(CacheEvent(
-          cacheKey: 'b', action: CacheAction.hit, sizeBytes: 200));
-      buffer.add(CacheEvent(
-          cacheKey: 'c', action: CacheAction.hit, sizeBytes: 300));
-      buffer.add(CacheEvent(
-          cacheKey: 'd', action: CacheAction.miss, sizeBytes: 400));
+      buffer.add(
+          CacheEvent(cacheKey: 'a', action: CacheAction.hit, sizeBytes: 100));
+      buffer.add(
+          CacheEvent(cacheKey: 'b', action: CacheAction.hit, sizeBytes: 200));
+      buffer.add(
+          CacheEvent(cacheKey: 'c', action: CacheAction.hit, sizeBytes: 300));
+      buffer.add(
+          CacheEvent(cacheKey: 'd', action: CacheAction.miss, sizeBytes: 400));
 
       final snapshot = MetricsSnapshot.fromBuffer(buffer);
 
@@ -82,8 +82,8 @@ void main() {
     test('totalEvents counts all events', () {
       final buffer = EventRingBuffer(capacity: 10);
 
-      buffer.add(ErrorEvent(
-          code: 'ERR_1', message: 'Something failed', fatal: false));
+      buffer.add(
+          ErrorEvent(code: 'ERR_1', message: 'Something failed', fatal: false));
       buffer.add(ErrorEvent(
           code: 'ERR_2', message: 'Something else failed', fatal: true));
 
@@ -95,10 +95,10 @@ void main() {
     test('evict CacheAction excluded from hit rate', () {
       final buffer = EventRingBuffer(capacity: 10);
 
-      buffer.add(CacheEvent(
-          cacheKey: 'a', action: CacheAction.hit, sizeBytes: 100));
-      buffer.add(CacheEvent(
-          cacheKey: 'b', action: CacheAction.evict, sizeBytes: 200));
+      buffer.add(
+          CacheEvent(cacheKey: 'a', action: CacheAction.hit, sizeBytes: 100));
+      buffer.add(
+          CacheEvent(cacheKey: 'b', action: CacheAction.evict, sizeBytes: 200));
 
       final snapshot = MetricsSnapshot.fromBuffer(buffer);
 

@@ -77,11 +77,7 @@ class _VideoCard extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              VideoCard(
-                index: index,
-                source: source,
-                showOverlay: true,
-              ),
+              VideoCard(index: index, source: source, showOverlay: true),
               // State badge overlay
               Positioned(
                 top: 12,
@@ -94,8 +90,10 @@ class _VideoCard extends StatelessWidget {
                 left: 12,
                 right: 12,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.6),
                     borderRadius: BorderRadius.circular(8),
@@ -151,10 +149,7 @@ class _LifecycleBadge extends StatelessWidget {
         color: _colorForState(state),
         borderRadius: BorderRadius.circular(6),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 4,
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 4),
         ],
       ),
       child: Text(

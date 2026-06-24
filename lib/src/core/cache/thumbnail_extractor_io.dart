@@ -65,8 +65,7 @@ class ThumbnailExtractor {
             await raf.setPosition(offset);
             final moreHeader = await raf.read(8);
             if (moreHeader.length >= 8) {
-              final moreType =
-                  String.fromCharCodes(moreHeader.sublist(4, 8));
+              final moreType = String.fromCharCodes(moreHeader.sublist(4, 8));
               if (moreType == 'moov') return true;
               if (moreType == 'mdat') return false;
             }

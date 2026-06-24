@@ -32,14 +32,22 @@ class _EventDebugOverlayState extends State<EventDebugOverlay> {
     if (!mounted) return;
     setState(() {
       final label = switch (event) {
-        SwapEvent e => 'SWAP #${e.entryId} -> idx ${e.toIndex} (${e.durationMs}ms${e.isWarmStart ? ", warm" : ""})',
-        ReconcileEvent e => 'RECONCILE p=${e.primaryIndex} play=${e.playCount} pre=${e.preloadCount} rel=${e.releaseCount}',
-        ThrottleEvent e => 'THROTTLE thermal=${e.thermalLevel.name} mem=${e.memoryPressure.name} max=${e.effectiveMaxConcurrent}',
-        CacheEvent e => 'CACHE ${e.action.name} ${e.cacheKey.length > 12 ? e.cacheKey.substring(0, 12) : e.cacheKey}...',
-        BandwidthSampleEvent e => 'BW ${(e.estimatedBytesPerSec / 1024).toStringAsFixed(0)} KB/s',
-        PredictionEvent e => 'PREDICT idx=${e.predictedIndex} conf=${e.confidence.toStringAsFixed(2)}${e.actualIndex != null ? " actual=${e.actualIndex}" : ""}',
-        LifecycleEvent e => 'LIFE #${e.entryId} ${e.fromState.name}->${e.toState.name}',
-        EmergencyFlushEvent e => 'FLUSH! survivor=${e.survivorEntryId} disposed=${e.disposedCount}',
+        SwapEvent e =>
+          'SWAP #${e.entryId} -> idx ${e.toIndex} (${e.durationMs}ms${e.isWarmStart ? ", warm" : ""})',
+        ReconcileEvent e =>
+          'RECONCILE p=${e.primaryIndex} play=${e.playCount} pre=${e.preloadCount} rel=${e.releaseCount}',
+        ThrottleEvent e =>
+          'THROTTLE thermal=${e.thermalLevel.name} mem=${e.memoryPressure.name} max=${e.effectiveMaxConcurrent}',
+        CacheEvent e =>
+          'CACHE ${e.action.name} ${e.cacheKey.length > 12 ? e.cacheKey.substring(0, 12) : e.cacheKey}...',
+        BandwidthSampleEvent e =>
+          'BW ${(e.estimatedBytesPerSec / 1024).toStringAsFixed(0)} KB/s',
+        PredictionEvent e =>
+          'PREDICT idx=${e.predictedIndex} conf=${e.confidence.toStringAsFixed(2)}${e.actualIndex != null ? " actual=${e.actualIndex}" : ""}',
+        LifecycleEvent e =>
+          'LIFE #${e.entryId} ${e.fromState.name}->${e.toState.name}',
+        EmergencyFlushEvent e =>
+          'FLUSH! survivor=${e.survivorEntryId} disposed=${e.disposedCount}',
         ErrorEvent e => 'ERR [${e.code}] ${e.message}',
         TokenEvent e => 'TOKEN ${e.runtimeType} pool=${e.poolId}',
       };
@@ -66,7 +74,9 @@ class _EventDebugOverlayState extends State<EventDebugOverlay> {
           child: FloatingActionButton.small(
             heroTag: 'event_debug',
             onPressed: () => setState(() => _visible = !_visible),
-            backgroundColor: _visible ? Colors.red.withValues(alpha: 0.8) : Colors.white24,
+            backgroundColor: _visible
+                ? Colors.red.withValues(alpha: 0.8)
+                : Colors.white24,
             child: Icon(_visible ? Icons.close : Icons.bug_report, size: 20),
           ),
         ),
@@ -89,9 +99,22 @@ class _EventDebugOverlayState extends State<EventDebugOverlay> {
                 children: [
                   Row(
                     children: [
-                      const Text('Pool Events', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold)),
+                      const Text(
+                        'Pool Events',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const Spacer(),
-                      Text('${_events.length}', style: const TextStyle(color: Colors.white38, fontSize: 10)),
+                      Text(
+                        '${_events.length}',
+                        style: const TextStyle(
+                          color: Colors.white38,
+                          fontSize: 10,
+                        ),
+                      ),
                     ],
                   ),
                   const Divider(color: Colors.white24, height: 8),
@@ -105,9 +128,12 @@ class _EventDebugOverlayState extends State<EventDebugOverlay> {
                         child: Text(
                           _events[i],
                           style: TextStyle(
-                            color: _events[i].startsWith('ERR') ? Colors.redAccent
-                                : _events[i].startsWith('FLUSH') ? Colors.orangeAccent
-                                : _events[i].startsWith('THROTTLE') ? Colors.yellowAccent
+                            color: _events[i].startsWith('ERR')
+                                ? Colors.redAccent
+                                : _events[i].startsWith('FLUSH')
+                                ? Colors.orangeAccent
+                                : _events[i].startsWith('THROTTLE')
+                                ? Colors.yellowAccent
                                 : Colors.greenAccent.withValues(alpha: 0.8),
                             fontSize: 10,
                             fontFamily: 'monospace',

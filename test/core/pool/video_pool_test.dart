@@ -111,16 +111,14 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       // At least one adapter should have had swapSource called.
-      final swapped = createdAdapters
-          .where((a) {
-            try {
-              verify(() => a.swapSource(any())).called(greaterThanOrEqualTo(1));
-              return true;
-            } catch (_) {
-              return false;
-            }
-          })
-          .toList();
+      final swapped = createdAdapters.where((a) {
+        try {
+          verify(() => a.swapSource(any())).called(greaterThanOrEqualTo(1));
+          return true;
+        } catch (_) {
+          return false;
+        }
+      }).toList();
       expect(swapped, isNotEmpty);
 
       pool.dispose();
@@ -488,8 +486,7 @@ void main() {
         itemCount: 100,
       );
 
-      final predictionEvents =
-          events.whereType<PredictionEvent>().toList();
+      final predictionEvents = events.whereType<PredictionEvent>().toList();
       expect(predictionEvents, hasLength(1));
       expect(predictionEvents.first.predictedIndex, greaterThan(0));
       expect(predictionEvents.first.confidence, greaterThan(0.0));
@@ -513,8 +510,7 @@ void main() {
         itemCount: 100,
       );
 
-      final predictionEvents =
-          events.whereType<PredictionEvent>().toList();
+      final predictionEvents = events.whereType<PredictionEvent>().toList();
       expect(predictionEvents, isEmpty);
 
       pool.dispose();
@@ -543,8 +539,7 @@ void main() {
       );
       await Future<void>.delayed(Duration.zero);
 
-      final predictionEvents =
-          events.whereType<PredictionEvent>().toList();
+      final predictionEvents = events.whereType<PredictionEvent>().toList();
       // Should have 2: one prediction, one resolution.
       expect(predictionEvents.length, greaterThanOrEqualTo(2));
 
@@ -582,8 +577,7 @@ void main() {
       );
 
       // Budget should have been requested.
-      final totalAllocated =
-          budget.allocations.values.fold(0, (a, b) => a + b);
+      final totalAllocated = budget.allocations.values.fold(0, (a, b) => a + b);
       expect(totalAllocated, 3);
       expect(createdAdapters.length, 3);
 

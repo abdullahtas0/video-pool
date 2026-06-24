@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.5.3
+
+### Documentation & Tooling
+- **100% public API documentation** — added dartdoc to the five previously
+  undocumented constructors (`PlayerAdapter`, `LifecyclePolicy`, `DecoderBudget`,
+  `VideoPoolPlatform`) and made the desktop registrant non-instantiable.
+- **README polish** — pub/CI/license badges, a live web-demo link, an honest
+  comparison vs. `video_player`/`chewie`/`better_player`/`preload_page_view`,
+  and a roadmap.
+- **Live web demo** — a GitHub Actions workflow builds the example for the web
+  and publishes it to GitHub Pages.
+- **CI** — added a workflow that runs `dart format`, `flutter analyze`, and the
+  full test suite on every push and pull request.
+- Added `CONTRIBUTING.md` and a minimal single-file example
+  (`example/lib/minimal_example.dart`).
+- Normalized formatting across the codebase (`dart format`). No behavior change.
+
 ## 0.5.2
 
 ### Example

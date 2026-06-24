@@ -380,8 +380,7 @@ void main() {
         decoderBudget: budget,
       );
       final poolAAdapterCount = createdAdapters.length;
-      expect(poolAAdapterCount, 2,
-          reason: 'Pool A should get 2 tokens');
+      expect(poolAAdapterCount, 2, reason: 'Pool A should get 2 tokens');
       expect(poolA.statistics.totalCreated, 2);
       expect(poolA.statistics.currentIdle, 2);
 

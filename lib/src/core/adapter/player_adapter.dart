@@ -12,6 +12,9 @@ import 'player_state.dart';
 /// **without** destroying the underlying decoder pipeline. This enables
 /// instance reuse — the core optimization of the video pool.
 abstract class PlayerAdapter {
+  /// Const constructor so implementations can be `const`.
+  const PlayerAdapter();
+
   /// Swap media source while reusing the player wrapper and texture surface.
   ///
   /// This is the **key method** for instance reuse. The player wrapper and
