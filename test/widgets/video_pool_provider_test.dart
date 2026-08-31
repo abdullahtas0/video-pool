@@ -16,8 +16,9 @@ void main() {
 
   setUp(() {
     mockAdapter = MockPlayerAdapter();
-    when(() => mockAdapter.stateNotifier)
-        .thenReturn(ValueNotifier(const PlayerState()));
+    when(
+      () => mockAdapter.stateNotifier,
+    ).thenReturn(ValueNotifier(const PlayerState()));
     when(() => mockAdapter.estimatedMemoryBytes).thenReturn(0);
 
     pool = VideoPool(
@@ -51,8 +52,9 @@ void main() {
       expect(foundPool, equals(pool));
     });
 
-    testWidgets('maybeOf() returns null when no provider exists',
-        (tester) async {
+    testWidgets('maybeOf() returns null when no provider exists', (
+      tester,
+    ) async {
       VideoPool? foundPool;
 
       await tester.pumpWidget(

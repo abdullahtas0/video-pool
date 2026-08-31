@@ -16,10 +16,8 @@ class LruCache<K, V> {
   /// Creates an LRU cache with the given [maxSize].
   ///
   /// [onEvict] is called whenever an entry is removed due to capacity limits.
-  LruCache({
-    required this.maxSize,
-    this.onEvict,
-  }) : assert(maxSize > 0, 'maxSize must be positive');
+  LruCache({required this.maxSize, this.onEvict})
+    : assert(maxSize > 0, 'maxSize must be positive');
 
   /// Maximum number of entries this cache will hold.
   final int maxSize;

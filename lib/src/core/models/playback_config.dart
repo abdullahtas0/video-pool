@@ -15,8 +15,8 @@ class PlaybackConfig {
     this.mute = false,
     this.volume = 1.0,
     this.speed = 1.0,
-  })  : assert(volume >= 0.0 && volume <= 1.0, 'volume must be 0.0–1.0'),
-        assert(speed >= 0.5 && speed <= 2.0, 'speed must be 0.5–2.0');
+  }) : assert(volume >= 0.0 && volume <= 1.0, 'volume must be 0.0–1.0'),
+       assert(speed >= 0.5 && speed <= 2.0, 'speed must be 0.5–2.0');
 
   /// Whether the video should loop when it reaches the end.
   final bool loop;

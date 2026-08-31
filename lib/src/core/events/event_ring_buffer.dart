@@ -8,7 +8,7 @@ import 'pool_event.dart';
 class EventRingBuffer {
   /// Creates a ring buffer that holds at most [capacity] events.
   EventRingBuffer({this.capacity = 1000})
-      : _buffer = List<PoolEvent?>.filled(capacity, null);
+    : _buffer = List<PoolEvent?>.filled(capacity, null);
 
   /// The maximum number of events this buffer can hold.
   final int capacity;

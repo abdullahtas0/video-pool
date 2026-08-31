@@ -13,35 +13,40 @@ void main() {
     group('PlaybackPhase / isReusable contract', () {
       test('idle phase is reusable', () {
         const state = PlayerState(phase: PlaybackPhase.idle);
-        final reusable = state.phase == PlaybackPhase.idle ||
+        final reusable =
+            state.phase == PlaybackPhase.idle ||
             state.phase == PlaybackPhase.paused;
         expect(reusable, isTrue);
       });
 
       test('paused phase is reusable', () {
         const state = PlayerState(phase: PlaybackPhase.paused);
-        final reusable = state.phase == PlaybackPhase.idle ||
+        final reusable =
+            state.phase == PlaybackPhase.idle ||
             state.phase == PlaybackPhase.paused;
         expect(reusable, isTrue);
       });
 
       test('playing phase is NOT reusable', () {
         const state = PlayerState(phase: PlaybackPhase.playing);
-        final reusable = state.phase == PlaybackPhase.idle ||
+        final reusable =
+            state.phase == PlaybackPhase.idle ||
             state.phase == PlaybackPhase.paused;
         expect(reusable, isFalse);
       });
 
       test('buffering phase is NOT reusable', () {
         const state = PlayerState(phase: PlaybackPhase.buffering);
-        final reusable = state.phase == PlaybackPhase.idle ||
+        final reusable =
+            state.phase == PlaybackPhase.idle ||
             state.phase == PlaybackPhase.paused;
         expect(reusable, isFalse);
       });
 
       test('disposed phase is NOT reusable', () {
         const state = PlayerState(phase: PlaybackPhase.disposed);
-        final reusable = state.phase == PlaybackPhase.idle ||
+        final reusable =
+            state.phase == PlaybackPhase.idle ||
             state.phase == PlaybackPhase.paused;
         expect(reusable, isFalse);
       });

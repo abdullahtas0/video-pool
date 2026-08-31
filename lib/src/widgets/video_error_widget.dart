@@ -6,11 +6,7 @@ import 'package:flutter/material.dart';
 /// Styled to match the app's Material theme.
 class VideoErrorWidget extends StatelessWidget {
   /// Creates a [VideoErrorWidget].
-  const VideoErrorWidget({
-    super.key,
-    this.errorMessage,
-    this.onRetry,
-  });
+  const VideoErrorWidget({super.key, this.errorMessage, this.onRetry});
 
   /// Human-readable error description. If null, a generic message is shown.
   final String? errorMessage;
@@ -31,11 +27,7 @@ class VideoErrorWidget extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.error_outline,
-                color: colorScheme.error,
-                size: 48,
-              ),
+              Icon(Icons.error_outline, color: colorScheme.error, size: 48),
               const SizedBox(height: 16),
               Text(
                 errorMessage ?? 'Failed to load video',
@@ -52,9 +44,7 @@ class VideoErrorWidget extends StatelessWidget {
                   onPressed: onRetry,
                   icon: const Icon(Icons.refresh),
                   label: const Text('Tap to retry'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.white,
-                  ),
+                  style: TextButton.styleFrom(foregroundColor: Colors.white),
                 ),
               ],
             ],

@@ -10,11 +10,9 @@ import '../models/video_source.dart';
 /// currently assigned to, and when it was last used (for LRU eviction).
 class PoolEntry {
   /// Creates a [PoolEntry] wrapping the given [adapter].
-  PoolEntry({
-    required this.id,
-    required this.adapter,
-  })  : lifecycleNotifier = ValueNotifier<LifecycleState>(LifecycleState.idle),
-        lastUsed = DateTime.now();
+  PoolEntry({required this.id, required this.adapter})
+    : lifecycleNotifier = ValueNotifier<LifecycleState>(LifecycleState.idle),
+      lastUsed = DateTime.now();
 
   /// Unique identifier for this pool entry.
   final int id;

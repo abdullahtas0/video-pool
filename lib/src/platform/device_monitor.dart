@@ -18,12 +18,14 @@ class DeviceMonitor implements VideoPoolPlatform {
   }
 
   /// Method channel for one-shot calls to the native layer.
-  static const MethodChannel _methodChannel =
-      MethodChannel('dev.video_pool/device_monitor');
+  static const MethodChannel _methodChannel = MethodChannel(
+    'dev.video_pool/device_monitor',
+  );
 
   /// Event channel for streaming device status updates.
-  static const EventChannel _eventChannel =
-      EventChannel('dev.video_pool/device_status');
+  static const EventChannel _eventChannel = EventChannel(
+    'dev.video_pool/device_status',
+  );
 
   /// Cached broadcast stream from the event channel.
   Stream<DeviceStatus>? _statusStream;
@@ -59,12 +61,12 @@ class DeviceMonitor implements VideoPoolPlatform {
 
   @override
   Stream<DeviceStatus> get statusStream {
-    _statusStream ??= _eventChannel
-        .receiveBroadcastStream()
-        .map<DeviceStatus>((dynamic event) {
-      return DeviceStatus.fromMap(Map<String, dynamic>.from(
-        event as Map<dynamic, dynamic>,
-      ));
+    _statusStream ??= _eventChannel.receiveBroadcastStream().map<DeviceStatus>((
+      dynamic event,
+    ) {
+      return DeviceStatus.fromMap(
+        Map<String, dynamic>.from(event as Map<dynamic, dynamic>),
+      );
     });
     return _statusStream!;
   }

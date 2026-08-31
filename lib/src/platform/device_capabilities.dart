@@ -76,11 +76,11 @@ class DeviceCapabilities {
 
   @override
   int get hashCode => Object.hash(
-        maxHardwareDecoders,
-        Object.hashAll(supportedCodecs),
-        totalMemoryBytes,
-        maxSupportedResolution,
-      );
+    maxHardwareDecoders,
+    Object.hashAll(supportedCodecs),
+    totalMemoryBytes,
+    maxSupportedResolution,
+  );
 
   @override
   String toString() =>

@@ -98,10 +98,7 @@ void main() {
 
   group('EmergencyFlushEvent', () {
     test('stores survivor and disposed count', () {
-      final event = EmergencyFlushEvent(
-        survivorEntryId: 0,
-        disposedCount: 3,
-      );
+      final event = EmergencyFlushEvent(survivorEntryId: 0, disposedCount: 3);
 
       expect(event.survivorEntryId, 0);
       expect(event.disposedCount, 3);
@@ -141,10 +138,7 @@ void main() {
 
   group('PredictionEvent', () {
     test('stores prediction fields with null actualIndex', () {
-      final event = PredictionEvent(
-        predictedIndex: 5,
-        confidence: 0.85,
-      );
+      final event = PredictionEvent(predictedIndex: 5, confidence: 0.85);
 
       expect(event.predictedIndex, 5);
       expect(event.confidence, 0.85);
@@ -192,10 +186,7 @@ void main() {
     });
 
     test('TokenGrantedEvent stores granted count', () {
-      final event = TokenGrantedEvent(
-        poolId: 'pool_1',
-        grantedCount: 2,
-      );
+      final event = TokenGrantedEvent(poolId: 'pool_1', grantedCount: 2);
 
       expect(event.poolId, 'pool_1');
       expect(event.grantedCount, 2);

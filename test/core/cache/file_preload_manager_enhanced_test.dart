@@ -137,8 +137,9 @@ void main() {
           'cacheKey': 'https://example.com/video.mp4',
         },
       ];
-      File('${cacheDir.path}/_manifest.json')
-          .writeAsStringSync(jsonEncode(manifest));
+      File(
+        '${cacheDir.path}/_manifest.json',
+      ).writeAsStringSync(jsonEncode(manifest));
 
       // Second session: new manager loads manifest.
       manager = FilePreloadManager(cacheDirectory: cacheDir.path);
@@ -160,8 +161,9 @@ void main() {
           'cacheKey': 'missing-key',
         },
       ];
-      File('${cacheDir.path}/_manifest.json')
-          .writeAsStringSync(jsonEncode(manifest));
+      File(
+        '${cacheDir.path}/_manifest.json',
+      ).writeAsStringSync(jsonEncode(manifest));
 
       manager = FilePreloadManager(cacheDirectory: cacheDir.path);
       await manager.loadManifest();
@@ -172,8 +174,9 @@ void main() {
 
     test('corrupt manifest does not crash', () async {
       final cacheDir = Directory(tempDir.path)..createSync(recursive: true);
-      File('${cacheDir.path}/_manifest.json')
-          .writeAsStringSync('not valid json!!!');
+      File(
+        '${cacheDir.path}/_manifest.json',
+      ).writeAsStringSync('not valid json!!!');
 
       manager = FilePreloadManager(cacheDirectory: cacheDir.path);
       // Should not throw.

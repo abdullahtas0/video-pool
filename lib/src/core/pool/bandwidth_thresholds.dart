@@ -39,9 +39,9 @@ class BandwidthThresholds {
 
   @override
   int get hashCode => Object.hash(
-        highBandwidth,
-        mediumBandwidth,
-        lowBandwidth,
-        hysteresisPercent,
-      );
+    highBandwidth,
+    mediumBandwidth,
+    lowBandwidth,
+    hysteresisPercent,
+  );
 }

@@ -29,9 +29,9 @@ void main() {
   MockPlayerAdapter createMockAdapter() {
     final adapter = MockPlayerAdapter();
     when(() => adapter.estimatedMemoryBytes).thenReturn(30 * 1024 * 1024);
-    when(() => adapter.stateNotifier).thenReturn(
-      ValueNotifier(const PlayerState()),
-    );
+    when(
+      () => adapter.stateNotifier,
+    ).thenReturn(ValueNotifier(const PlayerState()));
     when(() => adapter.isReusable).thenReturn(true);
     when(() => adapter.swapSource(any())).thenAnswer((_) async {});
     when(() => adapter.prepare()).thenAnswer((_) async {});
@@ -56,60 +56,60 @@ void main() {
   }
 
   group('C2: Race — device events vs reconciliation', () {
-    test('emergency flush during active reconciliation does not throw',
-        () async {
-      final pool = createPool();
+    test(
+      'emergency flush during active reconciliation does not throw',
+      () async {
+        final pool = createPool();
 
-      // Start a reconciliation.
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
+        // Start a reconciliation.
+        pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
 
-      // Immediately trigger emergency flush (before reconciliation completes).
-      // This should be serialized and not cause concurrent modification.
-      pool.onDeviceStatusChanged(
-        thermalLevel: ThermalLevel.nominal,
-        memoryPressure: MemoryPressureLevel.terminal,
-      );
-
-      // Let everything settle.
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-
-      // Should not have thrown — pool is still usable (or properly flushed).
-      pool.dispose();
-    });
-
-    test('rapid device status changes are serialized without exceptions',
-        () async {
-      final pool = createPool();
-
-      pool.onVisibilityChanged(
-        primaryIndex: 2,
-        visibilityRatios: {2: 1.0},
-      );
-      await Future<void>.delayed(Duration.zero);
-
-      // Mark primary as playing.
-      final entry = pool.getEntryForIndex(2);
-      entry?.lifecycleNotifier.value = LifecycleState.playing;
-
-      // Rapid fire multiple terminal events.
-      for (var i = 0; i < 5; i++) {
+        // Immediately trigger emergency flush (before reconciliation completes).
+        // This should be serialized and not cause concurrent modification.
         pool.onDeviceStatusChanged(
           thermalLevel: ThermalLevel.nominal,
           memoryPressure: MemoryPressureLevel.terminal,
         );
-      }
 
-      await Future<void>.delayed(const Duration(milliseconds: 200));
+        // Let everything settle.
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
-      // Pool should still be functional (at least 1 entry kept).
-      expect(pool.statistics.currentActive + pool.statistics.currentIdle,
-          greaterThanOrEqualTo(0));
+        // Should not have thrown — pool is still usable (or properly flushed).
+        pool.dispose();
+      },
+    );
 
-      pool.dispose();
-    });
+    test(
+      'rapid device status changes are serialized without exceptions',
+      () async {
+        final pool = createPool();
+
+        pool.onVisibilityChanged(primaryIndex: 2, visibilityRatios: {2: 1.0});
+        await Future<void>.delayed(Duration.zero);
+
+        // Mark primary as playing.
+        final entry = pool.getEntryForIndex(2);
+        entry?.lifecycleNotifier.value = LifecycleState.playing;
+
+        // Rapid fire multiple terminal events.
+        for (var i = 0; i < 5; i++) {
+          pool.onDeviceStatusChanged(
+            thermalLevel: ThermalLevel.nominal,
+            memoryPressure: MemoryPressureLevel.terminal,
+          );
+        }
+
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+
+        // Pool should still be functional (at least 1 entry kept).
+        expect(
+          pool.statistics.currentActive + pool.statistics.currentIdle,
+          greaterThanOrEqualTo(0),
+        );
+
+        pool.dispose();
+      },
+    );
   });
 
   group('H1: Emergency flush recovery', () {
@@ -127,10 +127,7 @@ void main() {
       );
 
       // Assign and play.
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
       await Future<void>.delayed(Duration.zero);
 
       final primaryEntry = pool.getEntryForIndex(0);
@@ -169,10 +166,7 @@ void main() {
       );
 
       // Set initial visibility.
-      pool.onVisibilityChanged(
-        primaryIndex: 2,
-        visibilityRatios: {2: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 2, visibilityRatios: {2: 1.0});
       await Future<void>.delayed(Duration.zero);
 
       final primaryEntry = pool.getEntryForIndex(2);
@@ -204,10 +198,7 @@ void main() {
         config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
       );
 
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
       await Future<void>.delayed(Duration.zero);
       pool.getEntryForIndex(0)?.lifecycleNotifier.value =
           LifecycleState.playing;
@@ -227,10 +218,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 100));
 
       // Now scroll to a new index — recovered entries should be usable.
-      pool.onVisibilityChanged(
-        primaryIndex: 3,
-        visibilityRatios: {3: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 3, visibilityRatios: {3: 1.0});
       await Future<void>.delayed(Duration.zero);
 
       expect(pool.getEntryForIndex(3), isNotNull);

@@ -230,10 +230,7 @@ class TokenRevokedEvent extends TokenEvent {
 /// available for other pools.
 class TokenGrantedEvent extends TokenEvent {
   /// Creates a token granted event.
-  TokenGrantedEvent({
-    required super.poolId,
-    required this.grantedCount,
-  });
+  TokenGrantedEvent({required super.poolId, required this.grantedCount});
 
   /// The number of tokens that were released (now available).
   final int grantedCount;
@@ -268,11 +265,7 @@ class BandwidthSampleEvent extends PoolEvent {
 /// Emitted when an error occurs within the pool or one of its subsystems.
 class ErrorEvent extends PoolEvent {
   /// Creates an error event.
-  ErrorEvent({
-    required this.code,
-    required this.message,
-    required this.fatal,
-  });
+  ErrorEvent({required this.code, required this.message, required this.fatal});
 
   /// A short, machine-readable error code (e.g. `SWAP_TIMEOUT`).
   final String code;

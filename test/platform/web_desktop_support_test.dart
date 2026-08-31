@@ -82,15 +82,17 @@ void main() {
 
   group('AudioFocusManager hardening', () {
     test('requestFocus treats a throwing platform as granted', () async {
-      final manager =
-          AudioFocusManager(platform: const _ThrowingFocusPlatform());
+      final manager = AudioFocusManager(
+        platform: const _ThrowingFocusPlatform(),
+      );
       await manager.requestFocus();
       expect(manager.hasFocus, isTrue);
     });
 
     test('releaseFocus swallows a throwing platform', () async {
-      final manager =
-          AudioFocusManager(platform: const _ThrowingFocusPlatform());
+      final manager = AudioFocusManager(
+        platform: const _ThrowingFocusPlatform(),
+      );
       await manager.requestFocus();
       await expectLater(manager.releaseFocus(), completes);
       expect(manager.hasFocus, isFalse);

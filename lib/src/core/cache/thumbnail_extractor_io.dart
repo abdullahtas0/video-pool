@@ -46,12 +46,14 @@ class ThumbnailExtractor {
         // Look for 'moov' atom in first few atoms
         var offset = 0;
         while (offset + 8 <= header.length) {
-          final size = (header[offset] << 24) |
+          final size =
+              (header[offset] << 24) |
               (header[offset + 1] << 16) |
               (header[offset + 2] << 8) |
               header[offset + 3];
-          final type =
-              String.fromCharCodes(header.sublist(offset + 4, offset + 8));
+          final type = String.fromCharCodes(
+            header.sublist(offset + 4, offset + 8),
+          );
 
           if (type == 'moov') return true;
           if (type == 'mdat') return false; // mdat before moov = not FastStart

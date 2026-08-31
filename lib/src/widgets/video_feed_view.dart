@@ -126,7 +126,8 @@ class _VideoFeedViewState extends State<VideoFeedView> {
           final now = DateTime.now();
           final dt = now.difference(_lastPositionTime).inMilliseconds;
           if (dt > 0) {
-            final velocity = (notification.metrics.pixels - _lastPosition) /
+            final velocity =
+                (notification.metrics.pixels - _lastPosition) /
                 dt *
                 1000; // pixels/sec
             if (velocity.abs() > 0) {

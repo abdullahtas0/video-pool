@@ -19,9 +19,9 @@ void main() {
   PoolEntry createEntry(int id, {int memoryBytes = 30 * 1024 * 1024}) {
     final adapter = MockPlayerAdapter();
     when(() => adapter.estimatedMemoryBytes).thenReturn(memoryBytes);
-    when(() => adapter.stateNotifier).thenReturn(
-      ValueNotifier(const PlayerState()),
-    );
+    when(
+      () => adapter.stateNotifier,
+    ).thenReturn(ValueNotifier(const PlayerState()));
     return PoolEntry(id: id, adapter: adapter);
   }
 
@@ -103,19 +103,25 @@ void main() {
       test('warning = 75% of budget', () {
         manager.scaleBudget(MemoryPressureLevel.warning);
         expect(
-            manager.effectiveBudgetBytes, (100 * 1024 * 1024 * 0.75).round());
+          manager.effectiveBudgetBytes,
+          (100 * 1024 * 1024 * 0.75).round(),
+        );
       });
 
       test('critical = 50% of budget', () {
         manager.scaleBudget(MemoryPressureLevel.critical);
         expect(
-            manager.effectiveBudgetBytes, (100 * 1024 * 1024 * 0.50).round());
+          manager.effectiveBudgetBytes,
+          (100 * 1024 * 1024 * 0.50).round(),
+        );
       });
 
       test('terminal = 25% of budget', () {
         manager.scaleBudget(MemoryPressureLevel.terminal);
         expect(
-            manager.effectiveBudgetBytes, (100 * 1024 * 1024 * 0.25).round());
+          manager.effectiveBudgetBytes,
+          (100 * 1024 * 1024 * 0.25).round(),
+        );
       });
     });
 

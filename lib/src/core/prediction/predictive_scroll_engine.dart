@@ -65,8 +65,11 @@ class PredictiveScrollEngine {
     if (velocity.abs() < itemExtent * 0.5) return null;
 
     // Compute final position using scroll physics deceleration.
-    final finalPosition =
-        _computeFinalPosition(position, velocity, effectivePlatform);
+    final finalPosition = _computeFinalPosition(
+      position,
+      velocity,
+      effectivePlatform,
+    );
 
     // Convert to index.
     final rawIndex = (finalPosition / itemExtent).round();
@@ -77,14 +80,17 @@ class PredictiveScrollEngine {
     // Medium velocity after deceleration started = higher confidence.
     final normalizedVelocity =
         velocity.abs() / (itemExtent * 10); // 10 pages/sec = very fast
-    final confidence =
-        (1.0 - normalizedVelocity.clamp(0.0, 0.8)).clamp(0.2, 0.95);
+    final confidence = (1.0 - normalizedVelocity.clamp(0.0, 0.8)).clamp(
+      0.2,
+      0.95,
+    );
 
     // Estimated arrival time.
     final distance = (finalPosition - position).abs();
     final avgVelocity = velocity.abs() / 2; // rough average during deceleration
-    final arrivalMs =
-        avgVelocity > 0 ? (distance / avgVelocity * 1000).round() : 0;
+    final arrivalMs = avgVelocity > 0
+        ? (distance / avgVelocity * 1000).round()
+        : 0;
 
     return PredictionResult(
       targetIndex: targetIndex,

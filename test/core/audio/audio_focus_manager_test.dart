@@ -23,10 +23,7 @@ void main() {
   group('Audio focus stream handling', () {
     test('focus lost triggers onShouldPause callback', () async {
       var pauseCalled = false;
-      manager.setCallbacks(
-        onPause: () => pauseCalled = true,
-        onResume: () {},
-      );
+      manager.setCallbacks(onPause: () => pauseCalled = true, onResume: () {});
       manager.startObserving();
 
       platform.emitAudioFocusChange(false); // focus lost
@@ -37,10 +34,7 @@ void main() {
 
     test('focus gained triggers onShouldResume callback', () async {
       var resumeCalled = false;
-      manager.setCallbacks(
-        onPause: () {},
-        onResume: () => resumeCalled = true,
-      );
+      manager.setCallbacks(onPause: () {}, onResume: () => resumeCalled = true);
       manager.startObserving();
 
       platform.emitAudioFocusChange(true); // focus gained
@@ -68,10 +62,7 @@ void main() {
     });
 
     test('no memory leak — subscription is cancelled on dispose', () async {
-      manager.setCallbacks(
-        onPause: () {},
-        onResume: () {},
-      );
+      manager.setCallbacks(onPause: () {}, onResume: () {});
       manager.startObserving();
       await manager.dispose();
 

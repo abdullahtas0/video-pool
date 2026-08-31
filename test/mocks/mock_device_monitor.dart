@@ -86,13 +86,15 @@ class MockDeviceMonitor implements VideoPoolPlatform {
     double batteryLevel = 1.0,
     bool isLowPowerMode = false,
   }) {
-    emitStatus(DeviceStatus(
-      thermalLevel: thermalLevel,
-      availableMemoryBytes: availableMemoryBytes,
-      memoryPressureLevel: memoryPressureLevel,
-      batteryLevel: batteryLevel,
-      isLowPowerMode: isLowPowerMode,
-    ));
+    emitStatus(
+      DeviceStatus(
+        thermalLevel: thermalLevel,
+        availableMemoryBytes: availableMemoryBytes,
+        memoryPressureLevel: memoryPressureLevel,
+        batteryLevel: batteryLevel,
+        isLowPowerMode: isLowPowerMode,
+      ),
+    );
   }
 
   /// Disposes the controllers.

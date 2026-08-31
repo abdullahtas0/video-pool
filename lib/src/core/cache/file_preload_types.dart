@@ -65,13 +65,13 @@ class CachedFile {
 
   /// Converts this to a JSON map (for manifest serialization).
   Map<String, dynamic> toJson() => {
-        'path': path,
-        'sizeBytes': sizeBytes,
-        'cachedAt': cachedAt.toIso8601String(),
-        'cacheKey': cacheKey,
-        'complete': complete,
-        'etag': etag,
-        'targetBytes': targetBytes,
-        'lastCheckedAt': lastCheckedAt?.toIso8601String(),
-      };
+    'path': path,
+    'sizeBytes': sizeBytes,
+    'cachedAt': cachedAt.toIso8601String(),
+    'cacheKey': cacheKey,
+    'complete': complete,
+    'etag': etag,
+    'targetBytes': targetBytes,
+    'lastCheckedAt': lastCheckedAt?.toIso8601String(),
+  };
 }

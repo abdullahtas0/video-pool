@@ -58,18 +58,19 @@ class PoolStatistics {
 
   @override
   int get hashCode => Object.hash(
-        totalCreated,
-        currentActive,
-        currentIdle,
-        swapCount,
-        disposeCount,
-        cacheHits,
-        cacheMisses,
-        estimatedMemoryBytes,
-      );
+    totalCreated,
+    currentActive,
+    currentIdle,
+    swapCount,
+    disposeCount,
+    cacheHits,
+    cacheMisses,
+    estimatedMemoryBytes,
+  );
 
   @override
-  String toString() => 'PoolStatistics('
+  String toString() =>
+      'PoolStatistics('
       'active: $currentActive, '
       'idle: $currentIdle, '
       'swaps: $swapCount, '

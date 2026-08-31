@@ -32,9 +32,9 @@ void main() {
   MockPlayerAdapter createMockAdapter() {
     final adapter = MockPlayerAdapter();
     when(() => adapter.estimatedMemoryBytes).thenReturn(30 * 1024 * 1024);
-    when(() => adapter.stateNotifier).thenReturn(
-      ValueNotifier(const PlayerState()),
-    );
+    when(
+      () => adapter.stateNotifier,
+    ).thenReturn(ValueNotifier(const PlayerState()));
     when(() => adapter.isReusable).thenReturn(true);
     when(() => adapter.swapSource(any())).thenAnswer((_) async {});
     when(() => adapter.prepare()).thenAnswer((_) async {});
@@ -103,27 +103,21 @@ void main() {
     },
   );
 
-  test(
-    'togglePlayPause restores full volume before resuming',
-    () async {
-      final pool = createPool();
+  test('togglePlayPause restores full volume before resuming', () async {
+    final pool = createPool();
 
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
-      await Future<void>.delayed(Duration.zero);
+    pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
+    await Future<void>.delayed(Duration.zero);
 
-      final entry = pool.getEntryForIndex(0)!;
-      final adapter = entry.adapter as MockPlayerAdapter;
+    final entry = pool.getEntryForIndex(0)!;
+    final adapter = entry.adapter as MockPlayerAdapter;
 
-      // Pause, then resume via the public toggle API.
-      await pool.togglePlayPause(0); // playing -> paused
-      await pool.togglePlayPause(0); // paused -> playing
+    // Pause, then resume via the public toggle API.
+    await pool.togglePlayPause(0); // playing -> paused
+    await pool.togglePlayPause(0); // paused -> playing
 
-      verify(() => adapter.setVolume(1.0)).called(greaterThanOrEqualTo(1));
+    verify(() => adapter.setVolume(1.0)).called(greaterThanOrEqualTo(1));
 
-      await pool.dispose();
-    },
-  );
+    await pool.dispose();
+  });
 }

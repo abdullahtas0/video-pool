@@ -24,12 +24,13 @@ void main() {
 
   setUp(() {
     mockAdapter = MockPlayerAdapter();
-    when(() => mockAdapter.stateNotifier)
-        .thenReturn(ValueNotifier(const PlayerState()));
+    when(
+      () => mockAdapter.stateNotifier,
+    ).thenReturn(ValueNotifier(const PlayerState()));
     when(() => mockAdapter.estimatedMemoryBytes).thenReturn(0);
-    when(() => mockAdapter.videoWidget).thenReturn(
-      const SizedBox(key: Key('mock_video_widget')),
-    );
+    when(
+      () => mockAdapter.videoWidget,
+    ).thenReturn(const SizedBox(key: Key('mock_video_widget')));
     when(() => mockAdapter.swapSource(any())).thenAnswer((_) async {});
     when(() => mockAdapter.prepare()).thenAnswer((_) async {});
     when(() => mockAdapter.play()).thenAnswer((_) async {});
@@ -47,15 +48,10 @@ void main() {
     await pool.dispose();
   });
 
-  Widget buildTestWidget({
-    required Widget child,
-  }) {
+  Widget buildTestWidget({required Widget child}) {
     return MaterialApp(
       home: Scaffold(
-        body: VideoPoolProvider(
-          pool: pool,
-          child: child,
-        ),
+        body: VideoPoolProvider(pool: pool, child: child),
       ),
     );
   }
@@ -78,10 +74,7 @@ void main() {
 
     testWidgets('shows error widget on error state', (tester) async {
       // Trigger pool to assign entry to index 0 with error state.
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
 
       // Wait for async reconciliation.
       await tester.pumpAndSettle();
@@ -92,12 +85,7 @@ void main() {
       entry!.lifecycleNotifier.value = LifecycleState.error;
 
       await tester.pumpWidget(
-        buildTestWidget(
-          child: const VideoCard(
-            index: 0,
-            source: testSource,
-          ),
-        ),
+        buildTestWidget(child: const VideoCard(index: 0, source: testSource)),
       );
 
       await tester.pump();
@@ -107,10 +95,7 @@ void main() {
     });
 
     testWidgets('shows custom error widget when provided', (tester) async {
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
       await tester.pumpAndSettle();
 
       final entry = pool.getEntryForIndex(0);
@@ -133,10 +118,7 @@ void main() {
     });
 
     testWidgets('shows video widget when playing', (tester) async {
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
       await tester.pumpAndSettle();
 
       final entry = pool.getEntryForIndex(0);
@@ -144,12 +126,7 @@ void main() {
       entry!.lifecycleNotifier.value = LifecycleState.playing;
 
       await tester.pumpWidget(
-        buildTestWidget(
-          child: const VideoCard(
-            index: 0,
-            source: testSource,
-          ),
-        ),
+        buildTestWidget(child: const VideoCard(index: 0, source: testSource)),
       );
 
       await tester.pump();

@@ -28,9 +28,9 @@ void main() {
   MockPlayerAdapter createMockAdapter() {
     final adapter = MockPlayerAdapter();
     when(() => adapter.estimatedMemoryBytes).thenReturn(30 * 1024 * 1024);
-    when(() => adapter.stateNotifier).thenReturn(
-      ValueNotifier(const PlayerState()),
-    );
+    when(
+      () => adapter.stateNotifier,
+    ).thenReturn(ValueNotifier(const PlayerState()));
     when(() => adapter.isReusable).thenReturn(true);
     when(() => adapter.swapSource(any())).thenAnswer((_) async {});
     when(() => adapter.prepare()).thenAnswer((_) async {});
@@ -56,9 +56,7 @@ void main() {
 
   group('VideoPool initialization', () {
     test('creates maxConcurrent adapter instances', () {
-      final pool = createPool(
-        config: const VideoPoolConfig(maxConcurrent: 3),
-      );
+      final pool = createPool(config: const VideoPoolConfig(maxConcurrent: 3));
 
       expect(createdAdapters.length, 3);
       expect(pool.statistics.totalCreated, 3);
@@ -86,10 +84,7 @@ void main() {
     test('assigns a player to the primary index', () async {
       final pool = createPool();
 
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
 
       // Give the async reconciliation a tick to complete.
       await Future<void>.delayed(Duration.zero);
@@ -104,10 +99,7 @@ void main() {
     test('swapSource is called when assigning to a new index', () async {
       final pool = createPool();
 
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
       await Future<void>.delayed(Duration.zero);
 
       // At least one adapter should have had swapSource called.
@@ -129,10 +121,7 @@ void main() {
         config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 1),
       );
 
-      pool.onVisibilityChanged(
-        primaryIndex: 2,
-        visibilityRatios: {2: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 2, visibilityRatios: {2: 1.0});
       await Future<void>.delayed(Duration.zero);
 
       final stats = pool.statistics;
@@ -153,19 +142,13 @@ void main() {
       );
 
       // First, scroll to index 2.
-      pool.onVisibilityChanged(
-        primaryIndex: 2,
-        visibilityRatios: {2: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 2, visibilityRatios: {2: 1.0});
       await Future<void>.delayed(Duration.zero);
 
       expect(pool.getEntryForIndex(2), isNotNull);
 
       // Now scroll far away to index 5.
-      pool.onVisibilityChanged(
-        primaryIndex: 5,
-        visibilityRatios: {5: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 5, visibilityRatios: {5: 1.0});
       await Future<void>.delayed(Duration.zero);
 
       // Old indices should be released, new ones assigned.
@@ -182,10 +165,7 @@ void main() {
         config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
       );
 
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
       await Future<void>.delayed(Duration.zero);
 
       final hitsBeforeSecondCall = pool.statistics.cacheHits;
@@ -205,10 +185,7 @@ void main() {
         config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
       );
 
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
       await Future<void>.delayed(Duration.zero);
 
       final swapsBefore = pool.statistics.swapCount;
@@ -260,10 +237,7 @@ void main() {
       await pool.dispose();
 
       // Should not throw.
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
       await Future<void>.delayed(Duration.zero);
 
       expect(pool.statistics.currentActive, 0);
@@ -277,10 +251,7 @@ void main() {
       );
 
       // Assign players first.
-      pool.onVisibilityChanged(
-        primaryIndex: 2,
-        visibilityRatios: {2: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 2, visibilityRatios: {2: 1.0});
       await Future<void>.delayed(Duration.zero);
 
       // Mark index 2 entry as playing so it survives.
@@ -317,9 +288,7 @@ void main() {
 
   group('VideoPool.dispose', () {
     test('disposes all adapter instances', () async {
-      final pool = createPool(
-        config: const VideoPoolConfig(maxConcurrent: 3),
-      );
+      final pool = createPool(config: const VideoPoolConfig(maxConcurrent: 3));
 
       await pool.dispose();
 
@@ -355,10 +324,7 @@ void main() {
         config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
       );
 
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
       await Future<void>.delayed(Duration.zero);
 
       final entry = pool.getEntryForIndex(0);
@@ -374,9 +340,9 @@ void main() {
     test('assignTo updates fields correctly', () {
       final adapter = MockPlayerAdapter();
       when(() => adapter.estimatedMemoryBytes).thenReturn(0);
-      when(() => adapter.stateNotifier).thenReturn(
-        ValueNotifier(const PlayerState()),
-      );
+      when(
+        () => adapter.stateNotifier,
+      ).thenReturn(ValueNotifier(const PlayerState()));
 
       final entry = PoolEntry(id: 0, adapter: adapter);
       expect(entry.isIdle, isTrue);
@@ -395,15 +361,12 @@ void main() {
     test('release resets to idle', () {
       final adapter = MockPlayerAdapter();
       when(() => adapter.estimatedMemoryBytes).thenReturn(0);
-      when(() => adapter.stateNotifier).thenReturn(
-        ValueNotifier(const PlayerState()),
-      );
+      when(
+        () => adapter.stateNotifier,
+      ).thenReturn(ValueNotifier(const PlayerState()));
 
       final entry = PoolEntry(id: 0, adapter: adapter);
-      entry.assignTo(
-        5,
-        const VideoSource(url: 'https://example.com/v.mp4'),
-      );
+      entry.assignTo(5, const VideoSource(url: 'https://example.com/v.mp4'));
       expect(entry.isIdle, isFalse);
 
       entry.release();
@@ -533,18 +496,16 @@ void main() {
       );
 
       // Then user stops scrolling and visibility settles.
-      pool.onVisibilityChanged(
-        primaryIndex: 2,
-        visibilityRatios: {2: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 2, visibilityRatios: {2: 1.0});
       await Future<void>.delayed(Duration.zero);
 
       final predictionEvents = events.whereType<PredictionEvent>().toList();
       // Should have 2: one prediction, one resolution.
       expect(predictionEvents.length, greaterThanOrEqualTo(2));
 
-      final resolved =
-          predictionEvents.where((e) => e.actualIndex != null).toList();
+      final resolved = predictionEvents
+          .where((e) => e.actualIndex != null)
+          .toList();
       expect(resolved, hasLength(1));
       expect(resolved.first.actualIndex, 2);
 
@@ -634,10 +595,7 @@ void main() {
       final events = <PoolEvent>[];
       pool.eventStream.listen(events.add);
 
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
       await Future<void>.delayed(Duration.zero);
 
       final reconcileEvents = events.whereType<ReconcileEvent>().toList();
@@ -656,10 +614,7 @@ void main() {
       final events = <PoolEvent>[];
       pool.eventStream.listen(events.add);
 
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
       await Future<void>.delayed(Duration.zero);
 
       final swapEvents = events.whereType<SwapEvent>().toList();
@@ -694,10 +649,7 @@ void main() {
         config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 0),
       );
 
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
       await Future<void>.delayed(Duration.zero);
 
       final m = pool.metrics;

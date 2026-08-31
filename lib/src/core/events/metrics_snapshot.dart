@@ -107,8 +107,9 @@ class MetricsSnapshot {
     return MetricsSnapshot(
       computedAt: DateTime.now().millisecondsSinceEpoch,
       cacheHitRate: hitMissTotal > 0 ? hits / hitMissTotal : 0.0,
-      avgSwapLatencyMs:
-          swapCount > 0 ? swapDurationSum / swapCount.toDouble() : 0.0,
+      avgSwapLatencyMs: swapCount > 0
+          ? swapDurationSum / swapCount.toDouble()
+          : 0.0,
       throttleCount: throttles,
       totalEvents: events.length,
       avgBandwidthBytesPerSec: bandwidthSampleCount > 0

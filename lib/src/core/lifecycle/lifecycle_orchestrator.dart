@@ -17,10 +17,7 @@ typedef EffectiveLimits = ({
 /// device-condition-aware limit computation on top.
 class LifecycleOrchestrator {
   /// Creates a [LifecycleOrchestrator] with the given [policy] and [logger].
-  LifecycleOrchestrator({
-    required this.policy,
-    required this.logger,
-  });
+  LifecycleOrchestrator({required this.policy, required this.logger});
 
   /// The lifecycle policy that determines reconciliation behavior.
   final LifecyclePolicy policy;

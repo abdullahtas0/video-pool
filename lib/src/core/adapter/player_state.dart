@@ -44,9 +44,9 @@ class PlayerState {
     this.currentSource,
     this.errorMessage,
   }) : assert(
-          bufferedFraction >= 0.0 && bufferedFraction <= 1.0,
-          'bufferedFraction must be 0.0–1.0',
-        );
+         bufferedFraction >= 0.0 && bufferedFraction <= 1.0,
+         'bufferedFraction must be 0.0–1.0',
+       );
 
   /// The current playback phase.
   final PlaybackPhase phase;
@@ -85,10 +85,12 @@ class PlayerState {
       position: position ?? this.position,
       duration: duration ?? this.duration,
       bufferedFraction: bufferedFraction ?? this.bufferedFraction,
-      currentSource:
-          clearCurrentSource ? null : (currentSource ?? this.currentSource),
-      errorMessage:
-          clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      currentSource: clearCurrentSource
+          ? null
+          : (currentSource ?? this.currentSource),
+      errorMessage: clearErrorMessage
+          ? null
+          : (errorMessage ?? this.errorMessage),
     );
   }
 
@@ -106,13 +108,13 @@ class PlayerState {
 
   @override
   int get hashCode => Object.hash(
-        phase,
-        position,
-        duration,
-        bufferedFraction,
-        currentSource,
-        errorMessage,
-      );
+    phase,
+    position,
+    duration,
+    bufferedFraction,
+    currentSource,
+    errorMessage,
+  );
 
   @override
   String toString() =>

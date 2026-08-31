@@ -77,20 +77,22 @@ void main() {
       expect(restored.lastCheckedAt, original.lastCheckedAt);
     });
 
-    test('constructor defaults complete to true and targetBytes to sizeBytes',
-        () {
-      final cached = CachedFile(
-        path: '/tmp/video.tmp',
-        sizeBytes: 2048,
-        cachedAt: DateTime.now(),
-        cacheKey: 'default-test',
-      );
+    test(
+      'constructor defaults complete to true and targetBytes to sizeBytes',
+      () {
+        final cached = CachedFile(
+          path: '/tmp/video.tmp',
+          sizeBytes: 2048,
+          cachedAt: DateTime.now(),
+          cacheKey: 'default-test',
+        );
 
-      expect(cached.complete, isTrue);
-      expect(cached.targetBytes, 2048);
-      expect(cached.etag, isNull);
-      expect(cached.lastCheckedAt, isNull);
-    });
+        expect(cached.complete, isTrue);
+        expect(cached.targetBytes, 2048);
+        expect(cached.etag, isNull);
+        expect(cached.lastCheckedAt, isNull);
+      },
+    );
   });
 
   group('FilePreloadManager resume features', () {
@@ -182,9 +184,7 @@ void main() {
         await File(oldIncomplete.path).writeAsBytes(List.filled(256, 0));
 
         final manifestFile = File('${tempDir.path}/_manifest.json');
-        await manifestFile.writeAsString(
-          json.encode([oldIncomplete.toJson()]),
-        );
+        await manifestFile.writeAsString(json.encode([oldIncomplete.toJson()]));
 
         await manager.loadManifest();
 
@@ -243,9 +243,7 @@ void main() {
         await File(oldComplete.path).writeAsBytes(List.filled(1024, 0));
 
         final manifestFile = File('${tempDir.path}/_manifest.json');
-        await manifestFile.writeAsString(
-          json.encode([oldComplete.toJson()]),
-        );
+        await manifestFile.writeAsString(json.encode([oldComplete.toJson()]));
 
         await manager.loadManifest();
 
@@ -271,9 +269,7 @@ void main() {
         await File(noLastChecked.path).writeAsBytes(List.filled(128, 0));
 
         final manifestFile = File('${tempDir.path}/_manifest.json');
-        await manifestFile.writeAsString(
-          json.encode([noLastChecked.toJson()]),
-        );
+        await manifestFile.writeAsString(json.encode([noLastChecked.toJson()]));
 
         await manager.loadManifest();
 
@@ -307,9 +303,7 @@ void main() {
         expect(manager.isCached('custom-age'), isTrue);
 
         // Now run cleanup with a 1-hour maxAge.
-        await manager.cleanupIncomplete(
-          maxAge: const Duration(hours: 1),
-        );
+        await manager.cleanupIncomplete(maxAge: const Duration(hours: 1));
 
         // Now it should be removed.
         expect(manager.isCached('custom-age'), isFalse);

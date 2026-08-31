@@ -19,19 +19,21 @@ void main() {
   const source = VideoSource(url: 'https://example.com/v.mp4');
 
   group('VideoPlayerAdapter swapSource', () {
-    test('initializes a controller and reports a reusable (paused) state',
-        () async {
-      final adapter = VideoPlayerAdapter();
-      await adapter.swapSource(source);
+    test(
+      'initializes a controller and reports a reusable (paused) state',
+      () async {
+        final adapter = VideoPlayerAdapter();
+        await adapter.swapSource(source);
 
-      expect(adapter.stateNotifier.value.phase, PlaybackPhase.paused);
-      expect(adapter.stateNotifier.value.currentSource, source);
-      expect(adapter.isReusable, isTrue);
-      expect(adapter.duration, const Duration(seconds: 10));
-      expect(fake.calls, contains('create'));
+        expect(adapter.stateNotifier.value.phase, PlaybackPhase.paused);
+        expect(adapter.stateNotifier.value.currentSource, source);
+        expect(adapter.isReusable, isTrue);
+        expect(adapter.duration, const Duration(seconds: 10));
+        expect(fake.calls, contains('create'));
 
-      await adapter.dispose();
-    });
+        await adapter.dispose();
+      },
+    );
 
     test('disposes the previous controller (recreate semantics)', () async {
       final adapter = VideoPlayerAdapter();
@@ -132,18 +134,19 @@ void main() {
       await adapter.dispose();
     });
 
-    test('dispose marks the adapter disposed and tears down the controller',
-        () async {
-      final adapter = VideoPlayerAdapter();
-      await adapter.swapSource(source);
-      await adapter.dispose();
+    test(
+      'dispose marks the adapter disposed and tears down the controller',
+      () async {
+        final adapter = VideoPlayerAdapter();
+        await adapter.swapSource(source);
+        await adapter.dispose();
 
-      expect(adapter.stateNotifier.value.phase, PlaybackPhase.disposed);
-      expect(fake.calls, contains('dispose'));
-    });
+        expect(adapter.stateNotifier.value.phase, PlaybackPhase.disposed);
+        expect(fake.calls, contains('dispose'));
+      },
+    );
 
-    testWidgets(
-        'videoWidget is a stable instance and renders nothing '
+    testWidgets('videoWidget is a stable instance and renders nothing '
         'before a source is loaded', (tester) async {
       final adapter = VideoPlayerAdapter();
 
@@ -163,8 +166,9 @@ void main() {
       await adapter.dispose();
     });
 
-    testWidgets('videoWidget renders a VideoPlayer once initialized',
-        (tester) async {
+    testWidgets('videoWidget renders a VideoPlayer once initialized', (
+      tester,
+    ) async {
       final adapter = VideoPlayerAdapter();
 
       // Use runAsync so the real Stream/initialize completes (the fake emits

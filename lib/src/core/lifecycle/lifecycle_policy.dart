@@ -38,14 +38,15 @@ class ReconciliationPlan {
 
   @override
   int get hashCode => Object.hash(
-        Object.hashAllUnordered(toRelease),
-        Object.hashAllUnordered(toPreload),
-        Object.hashAllUnordered(toPlay),
-        Object.hashAllUnordered(toPause),
-      );
+    Object.hashAllUnordered(toRelease),
+    Object.hashAllUnordered(toPreload),
+    Object.hashAllUnordered(toPlay),
+    Object.hashAllUnordered(toPause),
+  );
 
   @override
-  String toString() => 'ReconciliationPlan('
+  String toString() =>
+      'ReconciliationPlan('
       'toRelease: $toRelease, '
       'toPreload: $toPreload, '
       'toPlay: $toPlay, '
@@ -151,8 +152,10 @@ class DefaultLifecyclePolicy implements LifecyclePolicy {
     if (totalDesired > effectiveMaxConcurrent) {
       // Sort desired by distance from primary, release the furthest.
       final sorted = desiredActive.toList()
-        ..sort((a, b) =>
-            (a - primaryIndex).abs().compareTo((b - primaryIndex).abs()));
+        ..sort(
+          (a, b) =>
+              (a - primaryIndex).abs().compareTo((b - primaryIndex).abs()),
+        );
 
       for (var i = effectiveMaxConcurrent; i < sorted.length; i++) {
         final index = sorted[i];
