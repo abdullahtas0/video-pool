@@ -36,8 +36,8 @@ abstract class DecoderBudget {
 /// (e.g. after a decoder init failure), excess tokens are revoked from the
 /// pool with the most allocations.
 class GlobalDecoderBudget implements DecoderBudget {
-  /// Creates a global decoder budget with [totalTokens] slots.
-  GlobalDecoderBudget({int totalTokens = 4}) : _totalTokens = totalTokens;
+  /// Creates a global decoder budget with `totalTokens` slots.
+  GlobalDecoderBudget({this._totalTokens = 4});
 
   int _totalTokens;
   final Map<String, int> _allocations = {};
@@ -64,11 +64,9 @@ class GlobalDecoderBudget implements DecoderBudget {
     final granted = desired.clamp(0, _available);
     if (granted > 0) {
       _allocations[poolId] = (_allocations[poolId] ?? 0) + granted;
-      _controller.add(TokenRequestEvent(
-        poolId: poolId,
-        requested: desired,
-        granted: granted,
-      ));
+      _controller.add(
+        TokenRequestEvent(poolId: poolId, requested: desired, granted: granted),
+      );
     }
     return granted;
   }
@@ -81,10 +79,9 @@ class GlobalDecoderBudget implements DecoderBudget {
       _allocations[poolId] = current - released;
       if (_allocations[poolId] == 0) _allocations.remove(poolId);
       // Notify other pools that tokens became available.
-      _controller.add(TokenGrantedEvent(
-        poolId: poolId,
-        grantedCount: released,
-      ));
+      _controller.add(
+        TokenGrantedEvent(poolId: poolId, grantedCount: released),
+      );
     }
   }
 
@@ -126,11 +123,13 @@ class GlobalDecoderBudget implements DecoderBudget {
       if (targetPool == null) break;
       _allocations[targetPool] = maxTokens - 1;
       if (_allocations[targetPool] == 0) _allocations.remove(targetPool);
-      _controller.add(TokenRevokedEvent(
-        poolId: targetPool,
-        revokedCount: 1,
-        reason: 'budget_reduced',
-      ));
+      _controller.add(
+        TokenRevokedEvent(
+          poolId: targetPool,
+          revokedCount: 1,
+          reason: 'budget_reduced',
+        ),
+      );
     }
   }
 

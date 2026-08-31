@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "video_pool",
     platforms: [
-        .iOS("13.0")
+        .iOS("15.0")
     ],
     products: [
         // The library name uses "-" because the package name contains "_".

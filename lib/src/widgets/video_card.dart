@@ -65,7 +65,7 @@ class _VideoCardState extends State<VideoCard> {
     // is first assigned to our index (entry goes from null → assigned).
     return ValueListenableBuilder<int>(
       valueListenable: pool.reconciliationNotifier,
-      builder: (context, _, __) {
+      builder: (context, _, _) {
         final entry = pool.getEntryForIndex(widget.index);
 
         if (entry == null) {
@@ -106,10 +106,7 @@ class _VideoCardState extends State<VideoCard> {
       case LifecycleState.ready:
         return Stack(
           fit: StackFit.expand,
-          children: [
-            entry.adapter.videoWidget,
-            _buildThumbnail(),
-          ],
+          children: [entry.adapter.videoWidget, _buildThumbnail()],
         );
 
       case LifecycleState.playing:
@@ -143,26 +140,19 @@ class _VideoCardState extends State<VideoCard> {
           fit: StackFit.expand,
           children: [
             entry.adapter.videoWidget,
-            if (widget.showOverlay)
-              VideoOverlay(
-                lifecycleState: state,
-              ),
+            if (widget.showOverlay) VideoOverlay(lifecycleState: state),
           ],
         );
 
       case LifecycleState.error:
         return widget.errorWidget ??
-            VideoErrorWidget(
-              onRetry: () => _retry(entry),
-            );
+            VideoErrorWidget(onRetry: () => _retry(entry));
     }
   }
 
   Widget _buildThumbnail() {
     return widget.thumbnail ??
-        VideoThumbnail(
-          thumbnailUrl: widget.source.thumbnailUrl,
-        );
+        VideoThumbnail(thumbnailUrl: widget.source.thumbnailUrl);
   }
 
   void _togglePlayPause(PoolEntry entry) {

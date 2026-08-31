@@ -63,9 +63,9 @@ VideoPoolScope(
 
 ```yaml
 dependencies:
-  video_pool: ^0.5.3
+  video_pool: ^0.6.0
   media_kit: ^1.1.11
-  media_kit_video: ^1.2.5
+  media_kit_video: ^2.0.1
   media_kit_libs_video: ^1.0.5
 ```
 
@@ -316,7 +316,9 @@ The pool dynamically adapts to device conditions:
 This package uses [media_kit](https://pub.dev/packages/media_kit) for video playback. Follow the [media_kit platform setup guide](https://github.com/media-kit/media-kit#platform-specific-preparation) for:
 
 - **iOS**: Add to `Podfile` and run `pod install`. Swift Package Manager is also supported (Flutter 3.44+) — no extra steps; the same native sources back both build systems.
-- **Android**: No additional setup needed (uses bundled native libraries)
+- **Android**: No additional setup needed (uses bundled native libraries). The
+  plugin uses Built-in Kotlin and does not apply the Kotlin Gradle Plugin, so it
+  builds on both AGP 8 and AGP 9.
 
 ### Platform Support
 
@@ -336,10 +338,10 @@ This package uses [media_kit](https://pub.dev/packages/media_kit) for video play
 
 | Platform | Minimum Version |
 |----------|----------------|
-| iOS | 13.0 |
-| Android | API 21 (5.0) |
-| Flutter | 3.16.0 |
-| Dart | 3.2.0 |
+| iOS | 15.0 |
+| Android | API 24 (7.0) |
+| Flutter | 3.44.0 |
+| Dart | 3.12.0 |
 
 ## Dependencies
 

@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'video_pool'
-  s.version          = '0.1.0'
+  s.version          = '0.6.0'
   s.summary          = 'Video pool native monitoring for iOS'
   s.description      = <<-DESC
   Native iOS layer for video_pool Flutter plugin. Provides thermal monitoring,
@@ -14,6 +14,6 @@ Pod::Spec.new do |s|
   # Both build systems compile the same files under video_pool/Sources/video_pool.
   s.source_files     = 'video_pool/Sources/video_pool/**/*'
   s.dependency 'Flutter'
-  s.platform         = :ios, '13.0'
+  s.platform         = :ios, '15.0'
   s.swift_version    = '5.0'
 end

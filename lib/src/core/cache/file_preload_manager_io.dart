@@ -82,9 +82,7 @@ class FilePreloadManager {
     this.maxCacheSizeBytes = 500 * 1024 * 1024,
     int maxEntries = 100,
     this.connectionTimeoutSeconds = 15,
-  }) : _diskCache = LruCache<String, CachedFile>(
-          maxSize: maxEntries,
-        );
+  }) : _diskCache = LruCache<String, CachedFile>(maxSize: maxEntries);
 
   /// The directory where cached video files are stored.
   final String cacheDirectory;
@@ -306,8 +304,10 @@ class FilePreloadManager {
           final partial = _diskCache.remove(key);
           if (partial != null) {
             _currentCacheSizeBytes =
-                (_currentCacheSizeBytes - partial.sizeBytes)
-                    .clamp(0, maxCacheSizeBytes);
+                (_currentCacheSizeBytes - partial.sizeBytes).clamp(
+                  0,
+                  maxCacheSizeBytes,
+                );
           }
           _retryCount.remove(key);
           await _saveManifest();
@@ -325,8 +325,10 @@ class FilePreloadManager {
             final oldEntry = _diskCache.remove(key);
             if (oldEntry != null) {
               _currentCacheSizeBytes =
-                  (_currentCacheSizeBytes - oldEntry.sizeBytes)
-                      .clamp(0, maxCacheSizeBytes);
+                  (_currentCacheSizeBytes - oldEntry.sizeBytes).clamp(
+                    0,
+                    maxCacheSizeBytes,
+                  );
             }
 
             final partial = CachedFile(
@@ -569,7 +571,7 @@ class FilePreloadManager {
             if (await existing.exists()) await existing.delete();
           } catch (_) {}
 
-          return _downloadFresh(
+          return await _downloadFresh(
             params: params,
             response: response,
             client: client,
@@ -603,7 +605,7 @@ class FilePreloadManager {
         );
       }
 
-      return _downloadFresh(
+      return await _downloadFresh(
         params: params,
         response: response,
         client: client,
