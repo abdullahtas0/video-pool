@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.1
+
+### Removed
+- **Deleted `example/lib/log.md`** — a 253 KB raw `adb logcat` dump that was
+  committed into the example's `lib/` directory back in 0.3.0. It had no purpose,
+  was the single largest file in the published archive, and showed up as an example
+  source file on the package's pub.dev page.
+- **Excluded `assets/` from the published archive** via `.pubignore`. It holds only
+  `demo.gif` (4.2 MB), which the README references by absolute GitHub URL and which
+  no code or `pubspec.yaml` asset declaration uses — so every consumer was
+  downloading it for nothing. The file stays in the repository.
+
 ## 0.6.0
 
 ### Breaking

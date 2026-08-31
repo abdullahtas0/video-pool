@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'video_pool'
-  s.version          = '0.6.0'
+  s.version          = '0.6.1'
   s.summary          = 'Video pool native monitoring for iOS'
   s.description      = <<-DESC
   Native iOS layer for video_pool Flutter plugin. Provides thermal monitoring,

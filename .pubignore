@@ -6,3 +6,4 @@ android/local.properties
 android/app/
 ios/Flutter/
 ios/Runner/
+assets/
