@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.11.1
+  sdk: ^3.12.0
 
 dependencies:
   flutter:
@@ -12,7 +12,7 @@ dependencies:
   video_pool:
     path: ../
   media_kit: ^1.1.11
-  media_kit_video: ^1.2.5
+  media_kit_video: ^2.0.1
   media_kit_libs_video: ^1.0.5
   path_provider: ^2.1.0
 

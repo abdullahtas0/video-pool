@@ -62,23 +62,20 @@ class VideoPool {
   VideoPool({
     required this.config,
     required PlayerAdapter Function(int id) adapterFactory,
-    required VideoSourceResolver sourceResolver,
-    FilePreloadManager? filePreloadManager,
-    DecoderBudget? decoderBudget,
-  })  : _adapterFactory = adapterFactory,
-        _sourceResolver = sourceResolver,
-        _filePreloadManager = filePreloadManager,
-        _decoderBudget = decoderBudget,
-        _poolId = 'pool_${_poolIdCounter++}',
-        _logger = VideoPoolLogger(level: config.logLevel),
-        _orchestrator = LifecycleOrchestrator(
-          policy: config.lifecyclePolicy ?? const DefaultLifecyclePolicy(),
-          logger: VideoPoolLogger(level: config.logLevel),
-        ),
-        _memoryManager = MemoryManager(
-          budgetBytes: config.memoryBudgetBytes,
-          logger: VideoPoolLogger(level: config.logLevel),
-        ) {
+    required this._sourceResolver,
+    this._filePreloadManager,
+    this._decoderBudget,
+  }) : _adapterFactory = adapterFactory,
+       _poolId = 'pool_${_poolIdCounter++}',
+       _logger = VideoPoolLogger(level: config.logLevel),
+       _orchestrator = LifecycleOrchestrator(
+         policy: config.lifecyclePolicy ?? const DefaultLifecyclePolicy(),
+         logger: VideoPoolLogger(level: config.logLevel),
+       ),
+       _memoryManager = MemoryManager(
+         budgetBytes: config.memoryBudgetBytes,
+         logger: VideoPoolLogger(level: config.logLevel),
+       ) {
     // Determine how many entries to create.
     final desiredCount = config.maxConcurrent.clamp(1, 10);
     final int effectiveMaxConcurrent;
@@ -262,11 +259,13 @@ class VideoPool {
 
     // Resolve any outstanding scroll prediction.
     if (_lastPredictedIndex != null) {
-      _emit(PredictionEvent(
-        predictedIndex: _lastPredictedIndex!,
-        confidence: 0.0, // resolved
-        actualIndex: primaryIndex,
-      ));
+      _emit(
+        PredictionEvent(
+          predictedIndex: _lastPredictedIndex!,
+          confidence: 0.0, // resolved
+          actualIndex: primaryIndex,
+        ),
+      );
       _lastPredictedIndex = null;
       _predictionStableCount = 0;
     }
@@ -277,12 +276,12 @@ class VideoPool {
 
     // Serialize reconciliation: wait for previous run to finish, then
     // only run if no newer call has superseded us.
-    _activeReconciliation =
-        (_activeReconciliation ?? Future<void>.value()).then((_) {
-      if (version == _reconciliationVersion && !_disposed) {
-        return _reconcile(primaryIndex, visibilityRatios);
-      }
-    });
+    _activeReconciliation = (_activeReconciliation ?? Future<void>.value())
+        .then((_) {
+          if (version == _reconciliationVersion && !_disposed) {
+            return _reconcile(primaryIndex, visibilityRatios);
+          }
+        });
   }
 
   /// Called by scroll widgets with current scroll metrics for prediction.
@@ -325,10 +324,12 @@ class VideoPool {
     _lastPredictedIndex = prediction.targetIndex;
     _predictionStableCount++;
 
-    _emit(PredictionEvent(
-      predictedIndex: prediction.targetIndex,
-      confidence: prediction.confidence,
-    ));
+    _emit(
+      PredictionEvent(
+        predictedIndex: prediction.targetIndex,
+        confidence: prediction.confidence,
+      ),
+    );
 
     // Budget allocation based on confidence.
     if (prediction.confidence >= 0.7) {
@@ -348,10 +349,7 @@ class VideoPool {
   /// 1. Compute effective limits from device conditions.
   /// 2. Delegate to the orchestrator/policy for a plan.
   /// 3. Execute: release, preload, play, pause.
-  Future<void> _reconcile(
-    int primaryIndex,
-    Map<int, double> ratios,
-  ) async {
+  Future<void> _reconcile(int primaryIndex, Map<int, double> ratios) async {
     if (_disposed) return;
 
     // Step 1: Compute effective limits.
@@ -379,13 +377,15 @@ class VideoPool {
       currentlyActive: currentlyActive,
     );
 
-    _emit(ReconcileEvent(
-      primaryIndex: primaryIndex,
-      playCount: plan.toPlay.length,
-      preloadCount: plan.toPreload.length,
-      pauseCount: plan.toPause.length,
-      releaseCount: plan.toRelease.length,
-    ));
+    _emit(
+      ReconcileEvent(
+        primaryIndex: primaryIndex,
+        playCount: plan.toPlay.length,
+        preloadCount: plan.toPreload.length,
+        pauseCount: plan.toPause.length,
+        releaseCount: plan.toRelease.length,
+      ),
+    );
 
     // Step 4: Execute the plan.
 
@@ -508,8 +508,9 @@ class VideoPool {
   ///
   /// The adapter is NOT disposed — it remains available for reuse.
   Future<void> _releaseEntry(PoolEntry entry) async {
-    _logger
-        .debug('Releasing entry ${entry.id} from index ${entry.assignedIndex}');
+    _logger.debug(
+      'Releasing entry ${entry.id} from index ${entry.assignedIndex}',
+    );
 
     // Unlock cache key before releasing.
     if (_filePreloadManager != null && entry.currentSource != null) {
@@ -558,13 +559,15 @@ class VideoPool {
               2 * 1024 * 1024, // bytesToFetch default
               sw.elapsedMilliseconds,
             );
-            _emit(BandwidthSampleEvent(
-              bytesReceived: 2 * 1024 * 1024,
-              durationMs: sw.elapsedMilliseconds,
-              estimatedBytesPerSec:
-                  _bandwidthEstimator.estimatedBytesPerSec ?? 0,
-              concurrentDownloadsCount: 1,
-            ));
+            _emit(
+              BandwidthSampleEvent(
+                bytesReceived: 2 * 1024 * 1024,
+                durationMs: sw.elapsedMilliseconds,
+                estimatedBytesPerSec:
+                    _bandwidthEstimator.estimatedBytesPerSec ?? 0,
+                concurrentDownloadsCount: 1,
+              ),
+            );
           }
         });
       }
@@ -580,20 +583,24 @@ class VideoPool {
       await entry.adapter.swapSource(effectiveSource);
       sw.stop();
       _swapCount++;
-      _emit(SwapEvent(
-        entryId: entry.id,
-        fromIndex: -1,
-        toIndex: index,
-        durationMs: sw.elapsedMilliseconds,
-        isWarmStart: effectiveSource != source,
-      ));
+      _emit(
+        SwapEvent(
+          entryId: entry.id,
+          fromIndex: -1,
+          toIndex: index,
+          durationMs: sw.elapsedMilliseconds,
+          isWarmStart: effectiveSource != source,
+        ),
+      );
     } catch (e, st) {
       _logger.error('swapSource failed for entry ${entry.id}', e, st);
-      _emit(ErrorEvent(
-        code: 'SWAP_FAILED',
-        message: 'swapSource failed for entry ${entry.id}: $e',
-        fatal: false,
-      ));
+      _emit(
+        ErrorEvent(
+          code: 'SWAP_FAILED',
+          message: 'swapSource failed for entry ${entry.id}: $e',
+          fatal: false,
+        ),
+      );
       if (_filePreloadManager != null) {
         _filePreloadManager.unlockKey(source.cacheKey);
       }
@@ -619,10 +626,7 @@ class VideoPool {
     // Reset threshold state so onVisibilityChanged won't skip this call.
     _lastPlayableIndices = {};
     _lastPrimaryIndex = -1;
-    onVisibilityChanged(
-      primaryIndex: primary,
-      visibilityRatios: ratios,
-    );
+    onVisibilityChanged(primaryIndex: primary, visibilityRatios: ratios);
   }
 
   /// Toggle play/pause for the video at [index].
@@ -712,17 +716,19 @@ class VideoPool {
     _thermalLevel = thermalLevel;
     _memoryPressure = memoryPressure;
 
-    _emit(ThrottleEvent(
-      thermalLevel: thermalLevel,
-      memoryPressure: memoryPressure,
-      effectiveMaxConcurrent: _orchestrator
-          .computeEffectiveLimits(
-            config: config,
-            thermalLevel: thermalLevel,
-            memoryPressure: memoryPressure,
-          )
-          .maxConcurrent,
-    ));
+    _emit(
+      ThrottleEvent(
+        thermalLevel: thermalLevel,
+        memoryPressure: memoryPressure,
+        effectiveMaxConcurrent: _orchestrator
+            .computeEffectiveLimits(
+              config: config,
+              thermalLevel: thermalLevel,
+              memoryPressure: memoryPressure,
+            )
+            .maxConcurrent,
+      ),
+    );
 
     _memoryManager.scaleBudget(memoryPressure);
 
@@ -737,10 +743,10 @@ class VideoPool {
       }
       // Serialize emergency flush through the reconciliation chain to
       // prevent concurrent modification of entries.
-      _activeReconciliation =
-          (_activeReconciliation ?? Future<void>.value()).then((_) {
-        if (!_disposed) return _emergencyFlush();
-      });
+      _activeReconciliation = (_activeReconciliation ?? Future<void>.value())
+          .then((_) {
+            if (!_disposed) return _emergencyFlush();
+          });
     }
 
     // When pressure drops from terminal/critical to normal/warning,
@@ -776,9 +782,7 @@ class VideoPool {
       _totalCreated++;
     }
 
-    _logger.info(
-      'Recovery complete. Pool now has ${_entries.length} entries',
-    );
+    _logger.info('Recovery complete. Pool now has ${_entries.length} entries');
 
     // Re-reconcile with the last known visibility state so that
     // recovered entries are immediately put to use.
@@ -788,10 +792,7 @@ class VideoPool {
       final ratios = _lastVisibilityRatios;
       _lastPlayableIndices = {};
       _lastPrimaryIndex = -1;
-      onVisibilityChanged(
-        primaryIndex: primary,
-        visibilityRatios: ratios,
-      );
+      onVisibilityChanged(primaryIndex: primary, visibilityRatios: ratios);
     }
   }
 
@@ -844,14 +845,18 @@ class VideoPool {
     // Release tokens for disposed entries back to the shared budget.
     if (_decoderBudget != null && toRemove.isNotEmpty) {
       _decoderBudget.releaseTokens(_poolId, toRemove.length);
-      _grantedTokens =
-          (_grantedTokens - toRemove.length).clamp(0, _grantedTokens);
+      _grantedTokens = (_grantedTokens - toRemove.length).clamp(
+        0,
+        _grantedTokens,
+      );
     }
 
-    _emit(EmergencyFlushEvent(
-      survivorEntryId: primary?.id,
-      disposedCount: toRemove.length,
-    ));
+    _emit(
+      EmergencyFlushEvent(
+        survivorEntryId: primary?.id,
+        disposedCount: toRemove.length,
+      ),
+    );
 
     _logger.warning(
       'Emergency flush complete. Remaining entries: ${_entries.length}',

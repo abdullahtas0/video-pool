@@ -2,6 +2,62 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.0
+
+### Breaking
+- **Minimum SDK raised to Flutter 3.44 / Dart 3.12** (was Flutter 3.16 / Dart 3.2).
+  This matches what the package's own dependencies already require — `video_player`
+  2.14 declares `flutter: '>=3.44.0'` and `sdk: '^3.12.0'` — so the old floor was a
+  claim that could never actually be built or tested.
+- **Android `minSdk` 21 → 24** and **`compileSdk` 34 → 36**, matching Flutter's
+  current Android floor and compile target.
+- **iOS deployment target 13.0 → 15.0**, in both `ios/video_pool.podspec` and the
+  Swift Package Manager manifest, matching Flutter's current iOS floor.
+- The Android plugin now compiles against **Java 17** (was Java 8).
+- **Migrated the Android plugin to Built-in Kotlin.** The plugin no longer applies
+  `org.jetbrains.kotlin.android` itself. Flutter 3.47 warns that plugins which apply
+  the Kotlin Gradle Plugin "will fail to build" in future Flutter versions; Kotlin is
+  now supplied by AGP 9's built-in Kotlin, or auto-applied by the Flutter Gradle
+  Plugin when built-in Kotlin is off. Verified by building the example app three
+  ways: AGP 9.1.0 with `android.builtInKotlin=true`, AGP 9.1.0 with it `false`, and
+  AGP 8.11.1 / Gradle 8.14 / Kotlin 2.2.20 — all succeed, so apps still on AGP 8 are
+  not broken.
+
+### Fixed
+- **Cleanup was skipped when a non-resumed download failed.** In
+  `file_preload_manager_io.dart`, `_downloadFresh()` was returned without `await`
+  from inside a `try` block, so anything it threw bypassed the enclosing `catch` —
+  the partial-file deletion and sink close never ran. Both call sites now `await`.
+
+### Changed
+- Adopted Dart 3.12 **private named initializing formals** (`this._field`) in
+  `VideoPool`, `GlobalDecoderBudget`, and `AudioFocusManager`. Callers are
+  unaffected: the public argument names (`sourceResolver:`, `filePreloadManager:`,
+  `decoderBudget:`, `totalTokens:`, `platform:`) are unchanged.
+- Removed the deprecated `package` attribute from the Android manifest — AGP 8
+  takes the package name from `namespace`.
+- Replaced the deprecated `kotlinOptions { }` block with
+  `kotlin { compilerOptions { } }` (Kotlin 2.2 deprecation).
+- Synced `ios/video_pool.podspec`'s `s.version` with the package version; it had
+  been stuck at `0.1.0` since the first release.
+- The example app now exercises `media_kit_video` 2.x. It was pinned to `^1.2.5`
+  while the package itself already resolved 2.x, so the 2.x path was untested.
+- Example Android toolchain moved to Flutter 3.47's template versions: Gradle
+  8.14 → 9.3.1, AGP 8.11.1 → 9.1.0, Kotlin 2.2.20 → 2.4.0. The example app also
+  drops `kotlin-android` and moves `kotlinOptions` into `kotlin { compilerOptions }`.
+- Example iOS deployment target raised to 15.0 to match the podspec.
+- Reformatted the codebase with Dart's **tall-style** formatter, which activates
+  now that the package's language version is ≥ 3.7. Formatting only — no behavior
+  change.
+- Committed the analyzer `exclude` block that `flutter pub get` generates for
+  `build/`, `android/`, and `ios/`.
+
+### CI
+- Bumped `actions/checkout` 4→7, `actions/upload-pages-artifact` 3→5,
+  `actions/first-interaction` 1→3, `actions/stale` 9→10, `actions/labeler` 5→6
+  (closes the five open Dependabot PRs).
+- CI now also analyzes the example app and runs `dart pub publish --dry-run`.
+
 ## 0.5.3
 
 ### Documentation & Tooling

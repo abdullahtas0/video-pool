@@ -11,9 +11,8 @@ import '../../platform/platform_interface.dart';
 /// [WidgetsBindingObserver] to auto-pause video when the app goes to
 /// the background and auto-resume when it returns.
 class AudioFocusManager with WidgetsBindingObserver {
-  /// Creates an [AudioFocusManager] backed by the given [platform].
-  AudioFocusManager({required VideoPoolPlatform platform})
-      : _platform = platform;
+  /// Creates an [AudioFocusManager] backed by the given `platform`.
+  AudioFocusManager({required this._platform});
 
   final VideoPoolPlatform _platform;
 

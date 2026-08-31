@@ -80,7 +80,7 @@ void main() {
       var evictCalled = false;
       final cache = LruCache<String, int>(
         maxSize: 3,
-        onEvict: (_, __) => evictCalled = true,
+        onEvict: (_, _) => evictCalled = true,
       );
 
       cache.put('a', 1);
