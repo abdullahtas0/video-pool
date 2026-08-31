@@ -63,8 +63,7 @@ class FilePreloadManager {
   Future<String?> prefetch(
     VideoSource source, {
     int bytesToFetch = 2 * 1024 * 1024,
-  }) async =>
-      null;
+  }) async => null;
 
   /// No-op on web.
   void cancelPrefetch(String cacheKey) {}

@@ -34,67 +34,77 @@ void main() {
     VideoSource(url: 'https://example.com/2.mp4'),
   ];
 
-  test('VideoPool drives a real VideoPlayerAdapter end-to-end via the platform',
-      () async {
-    final events = <PoolEvent>[];
-    final pool = VideoPool(
-      config: const VideoPoolConfig(maxConcurrent: 2, preloadCount: 0),
-      adapterFactory: (_) => VideoPlayerAdapter(),
-      sourceResolver: (index) =>
-          index >= 0 && index < sources.length ? sources[index] : null,
-    );
-    final subscription = pool.eventStream.listen(events.add);
+  test(
+    'VideoPool drives a real VideoPlayerAdapter end-to-end via the platform',
+    () async {
+      final events = <PoolEvent>[];
+      final pool = VideoPool(
+        config: const VideoPoolConfig(maxConcurrent: 2, preloadCount: 0),
+        adapterFactory: (_) => VideoPlayerAdapter(),
+        sourceResolver: (index) =>
+            index >= 0 && index < sources.length ? sources[index] : null,
+      );
+      final subscription = pool.eventStream.listen(events.add);
 
-    // Two adapters (each a real VideoPlayerAdapter) are created up front.
-    expect(pool.statistics.totalCreated, 2);
+      // Two adapters (each a real VideoPlayerAdapter) are created up front.
+      expect(pool.statistics.totalCreated, 2);
 
-    // Become visible at index 0 — the pool reconciles, swaps the source onto an
-    // adapter, initializes the underlying VideoPlayerController, and plays it.
-    pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
+      // Become visible at index 0 — the pool reconciles, swaps the source onto an
+      // adapter, initializes the underlying VideoPlayerController, and plays it.
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
 
-    // The whole chain (reconcile → swapSource → controller.initialize via the
-    // fake event stream → play) is genuinely async; wait for it to settle.
-    await _waitUntil(() => fake.calls.contains('play'));
+      // The whole chain (reconcile → swapSource → controller.initialize via the
+      // fake event stream → play) is genuinely async; wait for it to settle.
+      await _waitUntil(() => fake.calls.contains('play'));
 
-    // End-to-end proof: the pool drove a real VideoPlayerAdapter, which created
-    // a real VideoPlayerController, which talked to the platform.
-    expect(fake.calls, contains('create'),
-        reason: 'adapter should create a controller through the platform');
-    expect(fake.calls, contains('play'),
-        reason: 'pool should play the primary entry through the adapter');
-    expect(pool.getEntryForIndex(0), isNotNull);
-    expect(pool.statistics.currentActive, greaterThanOrEqualTo(1));
-    expect(events.whereType<SwapEvent>(), isNotEmpty);
+      // End-to-end proof: the pool drove a real VideoPlayerAdapter, which created
+      // a real VideoPlayerController, which talked to the platform.
+      expect(
+        fake.calls,
+        contains('create'),
+        reason: 'adapter should create a controller through the platform',
+      );
+      expect(
+        fake.calls,
+        contains('play'),
+        reason: 'pool should play the primary entry through the adapter',
+      );
+      expect(pool.getEntryForIndex(0), isNotNull);
+      expect(pool.statistics.currentActive, greaterThanOrEqualTo(1));
+      expect(events.whereType<SwapEvent>(), isNotEmpty);
 
-    await subscription.cancel();
-    await pool.dispose();
-  });
+      await subscription.cancel();
+      await pool.dispose();
+    },
+  );
 
-  test('scrolling reassigns and plays the new primary via the adapter',
-      () async {
-    final pool = VideoPool(
-      config: const VideoPoolConfig(maxConcurrent: 2, preloadCount: 0),
-      adapterFactory: (_) => VideoPlayerAdapter(),
-      sourceResolver: (index) =>
-          index >= 0 && index < sources.length ? sources[index] : null,
-    );
+  test(
+    'scrolling reassigns and plays the new primary via the adapter',
+    () async {
+      final pool = VideoPool(
+        config: const VideoPoolConfig(maxConcurrent: 2, preloadCount: 0),
+        adapterFactory: (_) => VideoPlayerAdapter(),
+        sourceResolver: (index) =>
+            index >= 0 && index < sources.length ? sources[index] : null,
+      );
 
-    pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
-    await _waitUntil(() => pool.getEntryForIndex(0) != null);
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
+      await _waitUntil(() => pool.getEntryForIndex(0) != null);
 
-    final createsAfterFirst = fake.calls.where((c) => c == 'create').length;
+      final createsAfterFirst = fake.calls.where((c) => c == 'create').length;
 
-    // Scroll to index 2.
-    pool.onVisibilityChanged(primaryIndex: 2, visibilityRatios: {2: 1.0});
-    await _waitUntil(() => pool.getEntryForIndex(2) != null);
+      // Scroll to index 2.
+      pool.onVisibilityChanged(primaryIndex: 2, visibilityRatios: {2: 1.0});
+      await _waitUntil(() => pool.getEntryForIndex(2) != null);
 
-    expect(pool.getEntryForIndex(2), isNotNull);
-    // A fresh controller is created for the new source (recreate semantics).
-    expect(
-      fake.calls.where((c) => c == 'create').length,
-      greaterThan(createsAfterFirst),
-    );
+      expect(pool.getEntryForIndex(2), isNotNull);
+      // A fresh controller is created for the new source (recreate semantics).
+      expect(
+        fake.calls.where((c) => c == 'create').length,
+        greaterThan(createsAfterFirst),
+      );
 
-    await pool.dispose();
-  });
+      await pool.dispose();
+    },
+  );
 }

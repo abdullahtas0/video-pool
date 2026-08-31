@@ -108,14 +108,12 @@ class _VideoPoolScopeState extends State<VideoPoolScope>
   Future<void> _startDeviceMonitoring() async {
     try {
       await _platform.startMonitoring();
-      _statusSubscription = _platform.statusStream.listen(
-        (status) {
-          _pool.onDeviceStatusChanged(
-            thermalLevel: status.thermalLevel,
-            memoryPressure: status.memoryPressureLevel,
-          );
-        },
-      );
+      _statusSubscription = _platform.statusStream.listen((status) {
+        _pool.onDeviceStatusChanged(
+          thermalLevel: status.thermalLevel,
+          memoryPressure: status.memoryPressureLevel,
+        );
+      });
     } catch (_) {
       // Platform monitoring may not be available (e.g. in tests).
     }
@@ -124,10 +122,7 @@ class _VideoPoolScopeState extends State<VideoPoolScope>
   void _onShouldPause() {
     // Pause all playing entries by triggering a visibility change with no
     // visible items. This effectively pauses the current video.
-    _pool.onVisibilityChanged(
-      primaryIndex: -1,
-      visibilityRatios: const {},
-    );
+    _pool.onVisibilityChanged(primaryIndex: -1, visibilityRatios: const {});
   }
 
   void _onShouldResume() {
@@ -155,9 +150,6 @@ class _VideoPoolScopeState extends State<VideoPoolScope>
 
   @override
   Widget build(BuildContext context) {
-    return VideoPoolProvider(
-      pool: _pool,
-      child: widget.child,
-    );
+    return VideoPoolProvider(pool: _pool, child: widget.child);
   }
 }

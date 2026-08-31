@@ -75,10 +75,7 @@ class _VideoListViewState extends State<VideoListView> {
       for (var i = 0; i < visibleCount && i < widget.itemCount; i++) {
         ratios[i] = i == 0 ? 1.0 : 0.5;
       }
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: ratios,
-      );
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: ratios);
     });
   }
 

@@ -20,9 +20,9 @@ class DeviceStatus {
     required this.batteryLevel,
     required this.isLowPowerMode,
   }) : assert(
-          batteryLevel >= 0.0 && batteryLevel <= 1.0,
-          'batteryLevel must be 0.0–1.0',
-        );
+         batteryLevel >= 0.0 && batteryLevel <= 1.0,
+         'batteryLevel must be 0.0–1.0',
+       );
 
   /// Creates a [DeviceStatus] from a platform channel map.
   factory DeviceStatus.fromMap(Map<String, dynamic> map) {
@@ -92,15 +92,16 @@ class DeviceStatus {
 
   @override
   int get hashCode => Object.hash(
-        thermalLevel,
-        availableMemoryBytes,
-        memoryPressureLevel,
-        batteryLevel,
-        isLowPowerMode,
-      );
+    thermalLevel,
+    availableMemoryBytes,
+    memoryPressureLevel,
+    batteryLevel,
+    isLowPowerMode,
+  );
 
   @override
-  String toString() => 'DeviceStatus(thermalLevel: $thermalLevel, '
+  String toString() =>
+      'DeviceStatus(thermalLevel: $thermalLevel, '
       'availableMemoryBytes: $availableMemoryBytes, '
       'memoryPressureLevel: $memoryPressureLevel, '
       'batteryLevel: $batteryLevel, '

@@ -47,27 +47,27 @@ class VideoPoolConfig {
     this.lifecyclePolicy,
     this.bandwidthThresholds,
     this.logLevel = LogLevel.none,
-  })  : assert(maxConcurrent > 0, 'maxConcurrent must be positive'),
-        assert(maxConcurrent <= 10, 'maxConcurrent must not exceed 10'),
-        assert(preloadCount >= 0, 'preloadCount must be non-negative'),
-        assert(
-          preloadCount < maxConcurrent,
-          'preloadCount must be less than maxConcurrent '
-          '(at least 1 slot is needed for the primary player)',
-        ),
-        assert(memoryBudgetBytes > 0, 'memoryBudgetBytes must be positive'),
-        assert(
-          visibilityPlayThreshold > visibilityPauseThreshold,
-          'playThreshold must be greater than pauseThreshold',
-        ),
-        assert(
-          visibilityPlayThreshold >= 0.0 && visibilityPlayThreshold <= 1.0,
-          'visibilityPlayThreshold must be 0.0–1.0',
-        ),
-        assert(
-          visibilityPauseThreshold >= 0.0 && visibilityPauseThreshold <= 1.0,
-          'visibilityPauseThreshold must be 0.0–1.0',
-        );
+  }) : assert(maxConcurrent > 0, 'maxConcurrent must be positive'),
+       assert(maxConcurrent <= 10, 'maxConcurrent must not exceed 10'),
+       assert(preloadCount >= 0, 'preloadCount must be non-negative'),
+       assert(
+         preloadCount < maxConcurrent,
+         'preloadCount must be less than maxConcurrent '
+         '(at least 1 slot is needed for the primary player)',
+       ),
+       assert(memoryBudgetBytes > 0, 'memoryBudgetBytes must be positive'),
+       assert(
+         visibilityPlayThreshold > visibilityPauseThreshold,
+         'playThreshold must be greater than pauseThreshold',
+       ),
+       assert(
+         visibilityPlayThreshold >= 0.0 && visibilityPlayThreshold <= 1.0,
+         'visibilityPlayThreshold must be 0.0–1.0',
+       ),
+       assert(
+         visibilityPauseThreshold >= 0.0 && visibilityPauseThreshold <= 1.0,
+         'visibilityPauseThreshold must be 0.0–1.0',
+       );
 
   /// Maximum number of player instances that can be active simultaneously.
   final int maxConcurrent;
@@ -149,19 +149,20 @@ class VideoPoolConfig {
 
   @override
   int get hashCode => Object.hash(
-        maxConcurrent,
-        preloadCount,
-        memoryBudgetBytes,
-        visibilityPlayThreshold,
-        visibilityPauseThreshold,
-        preloadTimeout,
-        defaultPlaybackConfig,
-        bandwidthThresholds,
-        logLevel,
-      );
+    maxConcurrent,
+    preloadCount,
+    memoryBudgetBytes,
+    visibilityPlayThreshold,
+    visibilityPauseThreshold,
+    preloadTimeout,
+    defaultPlaybackConfig,
+    bandwidthThresholds,
+    logLevel,
+  );
 
   @override
-  String toString() => 'VideoPoolConfig('
+  String toString() =>
+      'VideoPoolConfig('
       'maxConcurrent: $maxConcurrent, '
       'preloadCount: $preloadCount, '
       'memoryBudget: ${memoryBudgetBytes ~/ (1024 * 1024)}MB)';

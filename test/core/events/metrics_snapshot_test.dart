@@ -23,13 +23,17 @@ void main() {
 
       // 3 hits + 1 miss = 0.75
       buffer.add(
-          CacheEvent(cacheKey: 'a', action: CacheAction.hit, sizeBytes: 100));
+        CacheEvent(cacheKey: 'a', action: CacheAction.hit, sizeBytes: 100),
+      );
       buffer.add(
-          CacheEvent(cacheKey: 'b', action: CacheAction.hit, sizeBytes: 200));
+        CacheEvent(cacheKey: 'b', action: CacheAction.hit, sizeBytes: 200),
+      );
       buffer.add(
-          CacheEvent(cacheKey: 'c', action: CacheAction.hit, sizeBytes: 300));
+        CacheEvent(cacheKey: 'c', action: CacheAction.hit, sizeBytes: 300),
+      );
       buffer.add(
-          CacheEvent(cacheKey: 'd', action: CacheAction.miss, sizeBytes: 400));
+        CacheEvent(cacheKey: 'd', action: CacheAction.miss, sizeBytes: 400),
+      );
 
       final snapshot = MetricsSnapshot.fromBuffer(buffer);
 
@@ -40,20 +44,24 @@ void main() {
     test('avgSwapLatencyMs computed from SwapEvents', () {
       final buffer = EventRingBuffer(capacity: 10);
 
-      buffer.add(SwapEvent(
-        entryId: 0,
-        fromIndex: 0,
-        toIndex: 1,
-        durationMs: 2,
-        isWarmStart: false,
-      ));
-      buffer.add(SwapEvent(
-        entryId: 0,
-        fromIndex: 0,
-        toIndex: 1,
-        durationMs: 4,
-        isWarmStart: false,
-      ));
+      buffer.add(
+        SwapEvent(
+          entryId: 0,
+          fromIndex: 0,
+          toIndex: 1,
+          durationMs: 2,
+          isWarmStart: false,
+        ),
+      );
+      buffer.add(
+        SwapEvent(
+          entryId: 0,
+          fromIndex: 0,
+          toIndex: 1,
+          durationMs: 4,
+          isWarmStart: false,
+        ),
+      );
 
       final snapshot = MetricsSnapshot.fromBuffer(buffer);
 
@@ -63,16 +71,20 @@ void main() {
     test('throttleCount counts ThrottleEvents', () {
       final buffer = EventRingBuffer(capacity: 10);
 
-      buffer.add(ThrottleEvent(
-        thermalLevel: ThermalLevel.serious,
-        memoryPressure: MemoryPressureLevel.normal,
-        effectiveMaxConcurrent: 2,
-      ));
-      buffer.add(ThrottleEvent(
-        thermalLevel: ThermalLevel.serious,
-        memoryPressure: MemoryPressureLevel.normal,
-        effectiveMaxConcurrent: 1,
-      ));
+      buffer.add(
+        ThrottleEvent(
+          thermalLevel: ThermalLevel.serious,
+          memoryPressure: MemoryPressureLevel.normal,
+          effectiveMaxConcurrent: 2,
+        ),
+      );
+      buffer.add(
+        ThrottleEvent(
+          thermalLevel: ThermalLevel.serious,
+          memoryPressure: MemoryPressureLevel.normal,
+          effectiveMaxConcurrent: 1,
+        ),
+      );
 
       final snapshot = MetricsSnapshot.fromBuffer(buffer);
 
@@ -83,9 +95,15 @@ void main() {
       final buffer = EventRingBuffer(capacity: 10);
 
       buffer.add(
-          ErrorEvent(code: 'ERR_1', message: 'Something failed', fatal: false));
-      buffer.add(ErrorEvent(
-          code: 'ERR_2', message: 'Something else failed', fatal: true));
+        ErrorEvent(code: 'ERR_1', message: 'Something failed', fatal: false),
+      );
+      buffer.add(
+        ErrorEvent(
+          code: 'ERR_2',
+          message: 'Something else failed',
+          fatal: true,
+        ),
+      );
 
       final snapshot = MetricsSnapshot.fromBuffer(buffer);
 
@@ -96,9 +114,11 @@ void main() {
       final buffer = EventRingBuffer(capacity: 10);
 
       buffer.add(
-          CacheEvent(cacheKey: 'a', action: CacheAction.hit, sizeBytes: 100));
+        CacheEvent(cacheKey: 'a', action: CacheAction.hit, sizeBytes: 100),
+      );
       buffer.add(
-          CacheEvent(cacheKey: 'b', action: CacheAction.evict, sizeBytes: 200));
+        CacheEvent(cacheKey: 'b', action: CacheAction.evict, sizeBytes: 200),
+      );
 
       final snapshot = MetricsSnapshot.fromBuffer(buffer);
 

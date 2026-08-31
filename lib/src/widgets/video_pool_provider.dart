@@ -27,8 +27,8 @@ class VideoPoolProvider extends InheritedWidget {
   /// Throws a [FlutterError] if no [VideoPoolProvider] is found above
   /// the given [context].
   static VideoPool of(BuildContext context) {
-    final provider =
-        context.dependOnInheritedWidgetOfExactType<VideoPoolProvider>();
+    final provider = context
+        .dependOnInheritedWidgetOfExactType<VideoPoolProvider>();
     if (provider == null) {
       throw FlutterError(
         'VideoPoolProvider.of() called with a context that does not '
@@ -45,8 +45,8 @@ class VideoPoolProvider extends InheritedWidget {
 
   /// Returns the nearest [VideoPool] from the widget tree, or null.
   static VideoPool? maybeOf(BuildContext context) {
-    final provider =
-        context.dependOnInheritedWidgetOfExactType<VideoPoolProvider>();
+    final provider = context
+        .dependOnInheritedWidgetOfExactType<VideoPoolProvider>();
     return provider?.pool;
   }
 

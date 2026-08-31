@@ -27,9 +27,9 @@ void main() {
   MockPlayerAdapter createMockAdapter() {
     final adapter = MockPlayerAdapter();
     when(() => adapter.estimatedMemoryBytes).thenReturn(30 * 1024 * 1024);
-    when(() => adapter.stateNotifier).thenReturn(
-      ValueNotifier(const PlayerState()),
-    );
+    when(
+      () => adapter.stateNotifier,
+    ).thenReturn(ValueNotifier(const PlayerState()));
     when(() => adapter.isReusable).thenReturn(true);
     when(() => adapter.swapSource(any())).thenAnswer((_) async {});
     when(() => adapter.prepare()).thenAnswer((_) async {});
@@ -60,80 +60,77 @@ void main() {
   }
 
   group('Full lifecycle: scope → feed → scroll → reconcile → events', () {
-    test('creates pool, triggers visibility, scrolls, and emits events',
-        () async {
-      final events = <PoolEvent>[];
+    test(
+      'creates pool, triggers visibility, scrolls, and emits events',
+      () async {
+        final events = <PoolEvent>[];
 
-      final pool = createPool(
-        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 1),
-      );
-      final subscription = pool.eventStream.listen(events.add);
+        final pool = createPool(
+          config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 1),
+        );
+        final subscription = pool.eventStream.listen(events.add);
 
-      // Pool should be initialized with 3 adapters.
-      expect(createdAdapters.length, 3);
-      expect(pool.statistics.totalCreated, 3);
-      expect(pool.statistics.currentIdle, 3);
-      expect(pool.statistics.currentActive, 0);
+        // Pool should be initialized with 3 adapters.
+        expect(createdAdapters.length, 3);
+        expect(pool.statistics.totalCreated, 3);
+        expect(pool.statistics.currentIdle, 3);
+        expect(pool.statistics.currentActive, 0);
 
-      // Simulate what VideoFeedView does: notify visibility for page 0.
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
-      await Future<void>.delayed(Duration.zero);
+        // Simulate what VideoFeedView does: notify visibility for page 0.
+        pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
+        await Future<void>.delayed(Duration.zero);
 
-      // Initial reconciliation should have emitted a ReconcileEvent.
-      expect(
-        events.whereType<ReconcileEvent>(),
-        isNotEmpty,
-        reason: 'Expected ReconcileEvent after initial visibility',
-      );
+        // Initial reconciliation should have emitted a ReconcileEvent.
+        expect(
+          events.whereType<ReconcileEvent>(),
+          isNotEmpty,
+          reason: 'Expected ReconcileEvent after initial visibility',
+        );
 
-      // Entry for index 0 should be assigned.
-      expect(pool.getEntryForIndex(0), isNotNull);
-      expect(pool.statistics.currentActive, greaterThanOrEqualTo(1));
+        // Entry for index 0 should be assigned.
+        expect(pool.getEntryForIndex(0), isNotNull);
+        expect(pool.statistics.currentActive, greaterThanOrEqualTo(1));
 
-      // SwapEvent should have been emitted for assigning the adapter.
-      expect(
-        events.whereType<SwapEvent>(),
-        isNotEmpty,
-        reason: 'Expected SwapEvent when adapter is assigned',
-      );
+        // SwapEvent should have been emitted for assigning the adapter.
+        expect(
+          events.whereType<SwapEvent>(),
+          isNotEmpty,
+          reason: 'Expected SwapEvent when adapter is assigned',
+        );
 
-      // Simulate scrolling to page 2 (like a fling in VideoFeedView).
-      pool.onVisibilityChanged(
-        primaryIndex: 2,
-        visibilityRatios: {2: 1.0},
-      );
-      await Future<void>.delayed(Duration.zero);
+        // Simulate scrolling to page 2 (like a fling in VideoFeedView).
+        pool.onVisibilityChanged(primaryIndex: 2, visibilityRatios: {2: 1.0});
+        await Future<void>.delayed(Duration.zero);
 
-      // Verify multiple ReconcileEvents exist (initial + scroll).
-      final reconcileEvents = events.whereType<ReconcileEvent>().toList();
-      expect(reconcileEvents.length, greaterThanOrEqualTo(2),
-          reason: 'Expected reconciliation for initial page and after scroll');
+        // Verify multiple ReconcileEvents exist (initial + scroll).
+        final reconcileEvents = events.whereType<ReconcileEvent>().toList();
+        expect(
+          reconcileEvents.length,
+          greaterThanOrEqualTo(2),
+          reason: 'Expected reconciliation for initial page and after scroll',
+        );
 
-      // Second reconcile should target primary index 2.
-      expect(reconcileEvents.last.primaryIndex, 2);
+        // Second reconcile should target primary index 2.
+        expect(reconcileEvents.last.primaryIndex, 2);
 
-      // Entry for index 2 should now be assigned.
-      expect(pool.getEntryForIndex(2), isNotNull);
+        // Entry for index 2 should now be assigned.
+        expect(pool.getEntryForIndex(2), isNotNull);
 
-      await subscription.cancel();
-      await pool.dispose();
-    });
+        await subscription.cancel();
+        await pool.dispose();
+      },
+    );
 
-    testWidgets('VideoFeedView renders and pool interacts via provider',
-        (tester) async {
+    testWidgets('VideoFeedView renders and pool interacts via provider', (
+      tester,
+    ) async {
       // Create pool with simple config and trigger reconciliation
       // before mounting the widget (avoids async pump hanging).
       final pool = createPool(
         config: const VideoPoolConfig(maxConcurrent: 1, preloadCount: 0),
       );
 
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
       await tester.pumpAndSettle();
 
       // Verify entry is assigned before widget mount.
@@ -172,10 +169,7 @@ void main() {
       );
 
       // Start with primary index 0.
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
       await Future<void>.delayed(Duration.zero);
 
       // Verify entry is assigned to index 0.
@@ -183,10 +177,7 @@ void main() {
       expect(pool.statistics.currentActive, greaterThanOrEqualTo(1));
 
       // Simulate tab switch away: primary = -1 (no video visible).
-      pool.onVisibilityChanged(
-        primaryIndex: -1,
-        visibilityRatios: const {},
-      );
+      pool.onVisibilityChanged(primaryIndex: -1, visibilityRatios: const {});
       await Future<void>.delayed(Duration.zero);
 
       // After primary=-1, the reconciliation should release entries.
@@ -194,14 +185,14 @@ void main() {
       final sub = pool.eventStream.listen(events.add);
 
       // Simulate tab switch back: set primary back to 0.
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
       await Future<void>.delayed(Duration.zero);
 
-      expect(pool.getEntryForIndex(0), isNotNull,
-          reason: 'Pool should resume after tab switch back');
+      expect(
+        pool.getEntryForIndex(0),
+        isNotNull,
+        reason: 'Pool should resume after tab switch back',
+      );
 
       // Verify a ReconcileEvent was emitted for the resume.
       expect(
@@ -216,53 +207,62 @@ void main() {
   });
 
   group('VideoListView mixed content with visibility tracking', () {
-    test('visibility changes trigger reconciliation for different indices',
-        () async {
-      final events = <PoolEvent>[];
-      final pool = createPool(
-        config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 1),
-      );
-      final subscription = pool.eventStream.listen(events.add);
+    test(
+      'visibility changes trigger reconciliation for different indices',
+      () async {
+        final events = <PoolEvent>[];
+        final pool = createPool(
+          config: const VideoPoolConfig(maxConcurrent: 3, preloadCount: 1),
+        );
+        final subscription = pool.eventStream.listen(events.add);
 
-      // Simulate initial visibility (what VideoListView postFrameCallback does).
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0, 1: 0.5, 2: 0.3},
-      );
-      await Future<void>.delayed(Duration.zero);
+        // Simulate initial visibility (what VideoListView postFrameCallback does).
+        pool.onVisibilityChanged(
+          primaryIndex: 0,
+          visibilityRatios: {0: 1.0, 1: 0.5, 2: 0.3},
+        );
+        await Future<void>.delayed(Duration.zero);
 
-      // Initial visibility should have triggered reconciliation.
-      expect(
-        events.whereType<ReconcileEvent>(),
-        isNotEmpty,
-        reason: 'Initial visibility should trigger reconciliation',
-      );
+        // Initial visibility should have triggered reconciliation.
+        expect(
+          events.whereType<ReconcileEvent>(),
+          isNotEmpty,
+          reason: 'Initial visibility should trigger reconciliation',
+        );
 
-      // Pool should have assigned entries.
-      expect(pool.statistics.currentActive, greaterThanOrEqualTo(1),
-          reason: 'At least one entry should be active');
+        // Pool should have assigned entries.
+        expect(
+          pool.statistics.currentActive,
+          greaterThanOrEqualTo(1),
+          reason: 'At least one entry should be active',
+        );
 
-      // Simulate scroll down: new indices become visible.
-      pool.onVisibilityChanged(
-        primaryIndex: 2,
-        visibilityRatios: {2: 1.0, 3: 0.5},
-      );
-      await Future<void>.delayed(Duration.zero);
+        // Simulate scroll down: new indices become visible.
+        pool.onVisibilityChanged(
+          primaryIndex: 2,
+          visibilityRatios: {2: 1.0, 3: 0.5},
+        );
+        await Future<void>.delayed(Duration.zero);
 
-      // After scrolling, we should have additional reconciliation events.
-      final reconcileCount = events.whereType<ReconcileEvent>().length;
-      expect(reconcileCount, greaterThanOrEqualTo(2),
-          reason: 'Scroll should trigger additional reconciliation');
+        // After scrolling, we should have additional reconciliation events.
+        final reconcileCount = events.whereType<ReconcileEvent>().length;
+        expect(
+          reconcileCount,
+          greaterThanOrEqualTo(2),
+          reason: 'Scroll should trigger additional reconciliation',
+        );
 
-      // Entry for new primary index should be assigned.
-      expect(pool.getEntryForIndex(2), isNotNull);
+        // Entry for new primary index should be assigned.
+        expect(pool.getEntryForIndex(2), isNotNull);
 
-      await subscription.cancel();
-      await pool.dispose();
-    });
+        await subscription.cancel();
+        await pool.dispose();
+      },
+    );
 
-    testWidgets('VideoListView renders with mixed content items',
-        (tester) async {
+    testWidgets('VideoListView renders with mixed content items', (
+      tester,
+    ) async {
       final pool = createPool(
         config: const VideoPoolConfig(maxConcurrent: 1, preloadCount: 0),
       );
@@ -312,10 +312,7 @@ void main() {
       final subscription = pool.eventStream.listen(events.add);
 
       // Trigger reconciliation.
-      pool.onVisibilityChanged(
-        primaryIndex: 0,
-        visibilityRatios: {0: 1.0},
-      );
+      pool.onVisibilityChanged(primaryIndex: 0, visibilityRatios: {0: 1.0});
       await Future<void>.delayed(Duration.zero);
 
       // Verify ReconcileEvent was emitted.
@@ -360,8 +357,11 @@ void main() {
       );
 
       // Pool requested 3 but budget only has 2 tokens.
-      expect(createdAdapters.length, 2,
-          reason: 'Only 2 entries should be created with budget of 2');
+      expect(
+        createdAdapters.length,
+        2,
+        reason: 'Only 2 entries should be created with budget of 2',
+      );
       expect(pool.statistics.totalCreated, 2);
       expect(pool.statistics.currentIdle, 2);
 
@@ -390,14 +390,20 @@ void main() {
         decoderBudget: budget,
       );
       final poolBAdapterCount = createdAdapters.length - poolAAdapterCount;
-      expect(poolBAdapterCount, 1,
-          reason: 'Pool B should only get 1 token (1 remaining)');
+      expect(
+        poolBAdapterCount,
+        1,
+        reason: 'Pool B should only get 1 token (1 remaining)',
+      );
       expect(poolB.statistics.totalCreated, 1);
       expect(poolB.statistics.currentIdle, 1);
 
       // Verify budget allocations total 3.
-      expect(budget.allocations.values.fold<int>(0, (a, b) => a + b), 3,
-          reason: 'All 3 tokens should be allocated');
+      expect(
+        budget.allocations.values.fold<int>(0, (a, b) => a + b),
+        3,
+        reason: 'All 3 tokens should be allocated',
+      );
 
       // Dispose pool A → releases 2 tokens.
       await poolA.dispose();
@@ -410,8 +416,11 @@ void main() {
         decoderBudget: budget,
       );
       final poolCAdapterCount = createdAdapters.length - poolCAdapterStartIndex;
-      expect(poolCAdapterCount, 2,
-          reason: 'Pool C should get 2 tokens after Pool A released');
+      expect(
+        poolCAdapterCount,
+        2,
+        reason: 'Pool C should get 2 tokens after Pool A released',
+      );
       expect(poolC.statistics.totalCreated, 2);
       expect(poolC.statistics.currentIdle, 2);
 

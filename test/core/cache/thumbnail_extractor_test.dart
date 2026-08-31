@@ -112,9 +112,9 @@ void main() {
         extractor.dispose();
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(
-          const MethodChannel('dev.video_pool/thumbnail'),
-          null,
-        );
+              const MethodChannel('dev.video_pool/thumbnail'),
+              null,
+            );
       });
 
       test('respects maxConcurrent limit', () async {
@@ -122,15 +122,15 @@ void main() {
 
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(
-          const MethodChannel('dev.video_pool/thumbnail'),
-          (MethodCall call) async {
-            methodCalls.add(call);
-            final completer = Completer<ByteData?>();
-            completers.add(completer);
-            // Simulate async work — don't complete immediately
-            return '/output/thumb.jpg';
-          },
-        );
+              const MethodChannel('dev.video_pool/thumbnail'),
+              (MethodCall call) async {
+                methodCalls.add(call);
+                final completer = Completer<ByteData?>();
+                completers.add(completer);
+                // Simulate async work — don't complete immediately
+                return '/output/thumb.jpg';
+              },
+            );
 
         // Queue 3 extractions with maxConcurrent=1
         final f1 = extractor.extract(
@@ -162,13 +162,13 @@ void main() {
         // Set up a handler that delays so tasks queue up
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(
-          const MethodChannel('dev.video_pool/thumbnail'),
-          (MethodCall call) async {
-            // Simulate slow extraction
-            await Future<void>.delayed(const Duration(milliseconds: 100));
-            return '/output/thumb.jpg';
-          },
-        );
+              const MethodChannel('dev.video_pool/thumbnail'),
+              (MethodCall call) async {
+                // Simulate slow extraction
+                await Future<void>.delayed(const Duration(milliseconds: 100));
+                return '/output/thumb.jpg';
+              },
+            );
 
         final localExtractor = ThumbnailExtractor(maxConcurrent: 1);
 

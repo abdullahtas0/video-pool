@@ -40,8 +40,8 @@ class VideoPlayerAdapter implements PlayerAdapter {
   /// factory for tests or to control controller options.
   VideoPlayerAdapter({
     VideoPlayerController Function(VideoSource source)? controllerFactory,
-  })  : _controllerFactory = controllerFactory ?? defaultControllerFactory,
-        _stateNotifier = ValueNotifier<PlayerState>(const PlayerState());
+  }) : _controllerFactory = controllerFactory ?? defaultControllerFactory,
+       _stateNotifier = ValueNotifier<PlayerState>(const PlayerState());
 
   final VideoPlayerController Function(VideoSource source) _controllerFactory;
   final ValueNotifier<PlayerState> _stateNotifier;
@@ -179,8 +179,9 @@ class VideoPlayerAdapter implements PlayerAdapter {
     return _defaultMemoryEstimate;
   }
 
-  late final Widget _videoWidget =
-      _VideoPlayerHost(controllerListenable: _controllerNotifier);
+  late final Widget _videoWidget = _VideoPlayerHost(
+    controllerListenable: _controllerNotifier,
+  );
 
   @override
   Widget get videoWidget => _videoWidget;
@@ -234,8 +235,9 @@ class VideoPlayerAdapter implements PlayerAdapter {
     }
 
     final duration = value.duration;
-    final buffered =
-        value.buffered.isNotEmpty ? value.buffered.last.end : Duration.zero;
+    final buffered = value.buffered.isNotEmpty
+        ? value.buffered.last.end
+        : Duration.zero;
     final bufferedFraction = duration.inMilliseconds > 0
         ? (buffered.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0)
         : 0.0;

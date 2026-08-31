@@ -32,8 +32,8 @@ class MediaKitAdapter implements PlayerAdapter {
     Player? player,
     PlayerConfiguration configuration = const PlayerConfiguration(),
     bool fastStartHls = true,
-  })  : _player = player ?? Player(configuration: configuration),
-        _stateNotifier = ValueNotifier<PlayerState>(const PlayerState()) {
+  }) : _player = player ?? Player(configuration: configuration),
+       _stateNotifier = ValueNotifier<PlayerState>(const PlayerState()) {
     _controller = media_kit_video.VideoController(_player);
     _setupListeners();
     if (fastStartHls) {
@@ -146,8 +146,9 @@ class MediaKitAdapter implements PlayerAdapter {
   }
 
   /// Cached video widget — must not be recreated on every build.
-  late final Widget _videoWidget =
-      media_kit_video.Video(controller: _controller);
+  late final Widget _videoWidget = media_kit_video.Video(
+    controller: _controller,
+  );
 
   @override
   Widget get videoWidget => _videoWidget;
@@ -245,18 +246,14 @@ class MediaKitAdapter implements PlayerAdapter {
     _subscriptions.add(
       _player.stream.position.listen((pos) {
         _position = pos;
-        _stateNotifier.value = _stateNotifier.value.copyWith(
-          position: pos,
-        );
+        _stateNotifier.value = _stateNotifier.value.copyWith(position: pos);
       }),
     );
 
     _subscriptions.add(
       _player.stream.duration.listen((dur) {
         _duration = dur;
-        _stateNotifier.value = _stateNotifier.value.copyWith(
-          duration: dur,
-        );
+        _stateNotifier.value = _stateNotifier.value.copyWith(duration: dur);
       }),
     );
 
@@ -276,8 +273,10 @@ class MediaKitAdapter implements PlayerAdapter {
       _player.stream.buffer.listen((buffer) {
         final dur = _duration;
         if (dur.inMilliseconds > 0) {
-          final fraction =
-              (buffer.inMilliseconds / dur.inMilliseconds).clamp(0.0, 1.0);
+          final fraction = (buffer.inMilliseconds / dur.inMilliseconds).clamp(
+            0.0,
+            1.0,
+          );
           _stateNotifier.value = _stateNotifier.value.copyWith(
             bufferedFraction: fraction,
           );

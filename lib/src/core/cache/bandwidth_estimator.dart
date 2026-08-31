@@ -22,8 +22,11 @@ class BandwidthEstimator {
   /// [durationMs]: download time in milliseconds.
   /// [concurrentDownloads]: number of parallel downloads at time of
   /// measurement — used to estimate total available bandwidth.
-  void addSample(int bytesReceived, int durationMs,
-      {int concurrentDownloads = 1}) {
+  void addSample(
+    int bytesReceived,
+    int durationMs, {
+    int concurrentDownloads = 1,
+  }) {
     if (durationMs <= 0 || bytesReceived <= 0) return;
 
     // This download got 1/N of total bandwidth if N downloads were concurrent.
@@ -36,8 +39,8 @@ class BandwidthEstimator {
       _estimate = estimatedTotalRate;
     } else {
       // EMA: newEstimate = alpha * sample + (1 - alpha) * previous
-      _estimate =
-          (alpha * estimatedTotalRate + (1 - alpha) * _estimate!).round();
+      _estimate = (alpha * estimatedTotalRate + (1 - alpha) * _estimate!)
+          .round();
     }
   }
 

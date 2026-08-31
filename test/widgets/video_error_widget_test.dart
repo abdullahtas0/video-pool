@@ -4,14 +4,11 @@ import 'package:video_pool/src/widgets/video_error_widget.dart';
 
 void main() {
   group('VideoErrorWidget', () {
-    testWidgets('shows default error message when errorMessage is null',
-        (tester) async {
+    testWidgets('shows default error message when errorMessage is null', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: VideoErrorWidget(),
-          ),
-        ),
+        const MaterialApp(home: Scaffold(body: VideoErrorWidget())),
       );
 
       expect(find.text('Failed to load video'), findsOneWidget);
@@ -22,9 +19,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: VideoErrorWidget(
-              errorMessage: 'Network error occurred',
-            ),
+            body: VideoErrorWidget(errorMessage: 'Network error occurred'),
           ),
         ),
       );
@@ -37,11 +32,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: VideoErrorWidget(
-              onRetry: () => retryCount++,
-            ),
-          ),
+          home: Scaffold(body: VideoErrorWidget(onRetry: () => retryCount++)),
         ),
       );
 
@@ -52,14 +43,11 @@ void main() {
       expect(retryCount, 1);
     });
 
-    testWidgets('does not show retry button when onRetry is null',
-        (tester) async {
+    testWidgets('does not show retry button when onRetry is null', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: VideoErrorWidget(),
-          ),
-        ),
+        const MaterialApp(home: Scaffold(body: VideoErrorWidget())),
       );
 
       expect(find.text('Tap to retry'), findsNothing);

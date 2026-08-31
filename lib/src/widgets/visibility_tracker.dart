@@ -32,11 +32,11 @@ class VisibilityTracker {
   ///
   /// [playThreshold] is the minimum visibility ratio to trigger auto-play.
   /// [pauseThreshold] is the visibility ratio below which to auto-pause.
-  const VisibilityTracker({
-    this.playThreshold = 0.6,
-    this.pauseThreshold = 0.4,
-  }) : assert(playThreshold > pauseThreshold,
-            'playThreshold must be greater than pauseThreshold');
+  const VisibilityTracker({this.playThreshold = 0.6, this.pauseThreshold = 0.4})
+    : assert(
+        playThreshold > pauseThreshold,
+        'playThreshold must be greater than pauseThreshold',
+      );
 
   /// Minimum visibility ratio (0.0–1.0) to trigger auto-play.
   final double playThreshold;
@@ -58,10 +58,7 @@ class VisibilityTracker {
     required double itemExtent,
   }) {
     if (itemCount == 0 || itemExtent <= 0) {
-      return const VisibilityUpdate(
-        primaryIndex: -1,
-        visibilityRatios: {},
-      );
+      return const VisibilityUpdate(primaryIndex: -1, visibilityRatios: {});
     }
 
     final metrics = notification.metrics;
@@ -74,8 +71,10 @@ class VisibilityTracker {
 
     // Compute the range of items that could be visible.
     final firstPossible = math.max(0, (viewportStart / itemExtent).floor());
-    final lastPossible =
-        math.min(itemCount - 1, (viewportEnd / itemExtent).ceil());
+    final lastPossible = math.min(
+      itemCount - 1,
+      (viewportEnd / itemExtent).ceil(),
+    );
 
     for (var i = firstPossible; i <= lastPossible; i++) {
       final itemStart = i * itemExtent;
@@ -97,10 +96,7 @@ class VisibilityTracker {
       }
     }
 
-    return VisibilityUpdate(
-      primaryIndex: bestIndex,
-      visibilityRatios: ratios,
-    );
+    return VisibilityUpdate(primaryIndex: bestIndex, visibilityRatios: ratios);
   }
 
   /// Compute visibility for a [PageView]-style widget.
@@ -114,10 +110,7 @@ class VisibilityTracker {
     required int itemCount,
   }) {
     if (itemCount == 0) {
-      return const VisibilityUpdate(
-        primaryIndex: -1,
-        visibilityRatios: {},
-      );
+      return const VisibilityUpdate(primaryIndex: -1, visibilityRatios: {});
     }
 
     final currentPage = page.floor();

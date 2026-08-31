@@ -8,12 +8,10 @@ import 'memory_pressure_level.dart';
 /// LRU-based eviction candidates when the memory budget is exceeded.
 class MemoryManager {
   /// Creates a [MemoryManager] with the given byte budget.
-  MemoryManager({
-    required this.budgetBytes,
-    VideoPoolLogger? logger,
-  })  : assert(budgetBytes > 0, 'budgetBytes must be positive'),
-        _logger = logger ?? const VideoPoolLogger(),
-        _effectiveBudgetBytes = budgetBytes;
+  MemoryManager({required this.budgetBytes, VideoPoolLogger? logger})
+    : assert(budgetBytes > 0, 'budgetBytes must be positive'),
+      _logger = logger ?? const VideoPoolLogger(),
+      _effectiveBudgetBytes = budgetBytes;
 
   /// The base memory budget in bytes.
   final int budgetBytes;
